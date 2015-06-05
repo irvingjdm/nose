@@ -1,0 +1,4855 @@
+#include "Main.h"
+#include "3ds.h"
+#pragma comment( lib, "fmod/fmodex_vc.lib" )
+
+HDC			hDC=NULL;		// Dispositivo de contexto GDI
+HGLRC		hRC=NULL;		// Contexto de renderizado
+HWND		hWnd=NULL;		// Manejador de ventana
+HINSTANCE	hInstance;		// Instancia de la aplicacion
+
+bool	keys[256];			// Arreglo para el manejo de teclado
+bool	active=TRUE;		// Bandera de ventana activa
+
+int glWidth;
+int glHeight;
+
+//Apuntador para primitivas de cuadricas
+GLUquadricObj	*e;
+
+//Nombre y ubicación de los modelos
+#define FILE_NAME1c  "Modelos/p1_torso.3ds"
+#define FILE_NAME2c  "Modelos/p1_cabeza.3ds"
+#define FILE_NAME3c  "Modelos/p1_piernader.3ds"
+#define FILE_NAME4c  "Modelos/p1_piernaizq.3ds"
+#define FILE_NAME5c  "Modelos/p1_brazoder.3ds"
+#define FILE_NAME6c  "Modelos/p1_brazoizq.3ds"
+#define FILE_NAME7c  "Modelos/p1_bota.3ds"
+#define FILE_NAME8c  "Modelos/arma.3ds"
+
+#define FILE_NAME1e1  "Modelos/e1_torso.3ds"
+#define FILE_NAME2e1  "Modelos/e1_cabeza.3ds"
+#define FILE_NAME3e1  "Modelos/e1_piernader.3ds"
+#define FILE_NAME4e1  "Modelos/e1_piernaizq.3ds"
+#define FILE_NAME5e1  "Modelos/e1_brazoder.3ds"
+#define FILE_NAME6e1  "Modelos/e1_brazoizq.3ds"
+#define FILE_NAME7e1  "Modelos/e1_bota.3ds"
+#define FILE_NAME8e1  "Modelos/e1_arma.3ds"
+
+#define FILE_NAME1e2  "Modelos/e2_torso.3ds"
+#define FILE_NAME2e2  "Modelos/e2_cabeza.3ds"
+#define FILE_NAME3e2  "Modelos/e2_piernader.3ds"
+#define FILE_NAME4e2  "Modelos/e2_piernaizq.3ds"
+#define FILE_NAME5e2  "Modelos/e2_brazoder.3ds"
+#define FILE_NAME6e2  "Modelos/e2_brazoizq.3ds"
+#define FILE_NAME7e2  "Modelos/e2_bota.3ds"
+
+#define LLANTA  "Modelos/llanta.3ds"
+#define TABLA  "Modelos/tabla.3ds"
+
+//Contenedores de texturas de cada modelo
+CTga textureModel1c[20];
+CTga textureModel2c[20];
+CTga textureModel3c[20];
+CTga textureModel4c[20];
+CTga textureModel5c[20];
+CTga textureModel6c[20];
+CTga textureModel7c[20];
+CTga textureModel8c[20];
+
+CTga textureModel1e1[20];
+CTga textureModel2e1[20];
+CTga textureModel3e1[20];
+CTga textureModel4e1[20];
+CTga textureModel5e1[20];
+CTga textureModel6e1[20];
+CTga textureModel7e1[20];
+CTga textureModel8e1[20];
+
+CTga textureModel1e2[20];
+CTga textureModel2e2[20];
+CTga textureModel3e2[20];
+CTga textureModel4e2[20];
+CTga textureModel5e2[20];
+CTga textureModel6e2[20];
+CTga textureModel7e2[20];
+CTga textureModel8e2[20];
+
+CTga textureModelLlanta[4];
+CTga textureModelTabla[4];
+
+//Contenedor de texturas para el escenario
+CTga textureName[20];
+
+//Objeto que da acceso a las funciones del cargador 3ds
+CLoad3DS g_Load3ds;
+
+//Instancias de la estructura que almacenaran los datos de cada modelo
+t3DModel g_3DModel1c;
+t3DModel g_3DModel2c;
+t3DModel g_3DModel3c;
+t3DModel g_3DModel4c;
+t3DModel g_3DModel5c;
+t3DModel g_3DModel6c;
+t3DModel g_3DModel7c;
+t3DModel g_3DModel8c;
+
+t3DModel g_3DModel1e1;
+t3DModel g_3DModel2e1;
+t3DModel g_3DModel3e1;
+t3DModel g_3DModel4e1;
+t3DModel g_3DModel5e1;
+t3DModel g_3DModel6e1;
+t3DModel g_3DModel7e1;
+t3DModel g_3DModel8e1;
+
+t3DModel g_3DModel1e2;
+t3DModel g_3DModel2e2;
+t3DModel g_3DModel3e2;
+t3DModel g_3DModel4e2;
+t3DModel g_3DModel5e2;
+t3DModel g_3DModel6e2;
+t3DModel g_3DModel7e2;
+t3DModel g_3DModel8e2;
+
+t3DModel g_3DModelLlanta;
+t3DModel g_3DModelTabla;
+
+//Objeto para acceder a las variables de control del personaje
+paramObjCam player1;
+paramObjCam enemigo1;
+paramObjCam enemigo2;
+paramObjCam enemigo3;
+
+CVector ejeRotEnemigo1=CVector(0.0f, 1.0f, 0.0f);
+CVector ejeRotEnemigo2=CVector(0.0f, 1.0f, 0.0f);
+CVector ejeRotEnemigo3=CVector(0.0f, 1.0f, 0.0f);
+
+enemigo enemigoDat[3];
+
+//Esferas de colisión del personaje, enemigos y botes
+esferaCol esfPersonaje;
+esferaCol esfEnemigo[3];
+esferaCol esfBote[7];
+
+//Variables para iluminacion
+GLfloat LightPos[] = { 0.0f, 80.0f, 100.0f, 1.0f};		// Posición de la luz
+GLfloat LightAmb[] = { 0.8f,  0.8f, 0.8f, 1.0f};		// Valores de la componente ambiente
+GLfloat LightDif[] = { 0.9f,  0.9f, 0.9f, 1.0f};		// Valores de la componente difusa
+GLfloat LightSpc[] = { 0.9f,  0.9f, 0.9f, 1.0f};		// Valores de la componente especular
+CVector lightPosition;
+
+GLfloat gDefaultAmbient[] = {0.2f, 0.2f, 0.2f, 1.0f};
+GLfloat gDefaultDiffuse[] = {0.8f, 0.8f, 0.8f, 1.0f};
+GLfloat gDefaultSpecular[]= {0.0f, 0.0f, 0.0f, 1.0f};
+GLfloat gDefaultShininess = 0.0f;
+
+plano planoCol[5];
+
+CTga textura[40];
+
+float vel=0.5f;
+
+//Variables del personaje (para modelado jerárquico)
+jerarquiaModelo player1modelo;	//Acceso a la estructura con las variables de cada pieza del modelo
+jerarquiaModelo enemigo1modelo;
+jerarquiaModelo enemigo2modelo;
+
+//Variables para animaciones
+const int maxKF1=3; //Num. total de KeyFrames para la secuencia 1 (caminar)
+const int maxKF2=8; //Num. total de KeyFrames para la secuencia 2 (patada en el aire)
+const int maxKF3=7; //Num. total de KeyFrames para la secuencia 3 (en la patineta)
+
+const int maxKF2e1=7; //Num. total de KeyFrames para la secuencia 2 (patada en el aire)
+
+FRAME KeyFrame1p1[maxKF1]; //Contenedor para almacenar cada keyframe de la secuencia 1
+FRAME KeyFrame2p1[maxKF2]; //Contenedor para almacenar cada keyframe de la secuencia 2
+FRAME KeyFrame3p1[maxKF3]; //Contenedor para almacenar cada keyframe de la secuencia 3
+
+FRAME KeyFrame1e1[maxKF1]; //Contenedor para almacenar cada keyframe de la secuencia 1
+FRAME KeyFrame2e1[maxKF2e1]; //Contenedor para almacenar cada keyframe de la secuencia 2
+
+FRAME KeyFrame1e2[maxKF1]; //Contenedor para almacenar cada keyframe de la secuencia 1
+FRAME KeyFrame2e2[maxKF2]; //Contenedor para almacenar cada keyframe de la secuencia 2
+
+//Variables auxiliares para animacion
+varsAnim varsAnimP1;
+varsAnim varsAnimE1;
+varsAnim varsAnimE2;
+
+//Variables para el movimiento del camión
+float angCamion;
+float despCamion;
+float angLlantasCamion;
+int estadoCamion;
+
+float angReja;
+int estadoReja;
+
+int contAnimPolvo=0;
+int estadoBote=0;
+int estadoHoverBoard=0;
+float angHoverBoard=0.0f;
+int sonidoHoverBoard=0;
+
+//Banderas de estado de las teclas
+int teclaUp=0; //Sin presionar
+int teclaDn=0; //Sin presionar
+int teclaLt=0; //Sin presionar
+int teclaRt=0; //Sin presionar
+
+FMOD_SOUND       *sound[6] = { 0, 0, 0, 0, 0, 0 };
+FMOD_CHANNEL     *channel[6] = { 0, 0, 0, 0, 0, 0 };
+
+LRESULT	CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);	// Declaracion de WndProc (Procedimiento de ventana)
+
+GLvoid ReDimensionaEscenaGL(GLsizei width, GLsizei height)	// Redimensiona e inicializa la ventana
+{
+	if (height==0)							// Para que no se presente una division por cero
+	{
+		height=1;							// la altura se iguala a 1
+	}
+
+	glViewport(0,0,width,height);					// Resetea el puerto de vista
+
+	glMatrixMode(GL_PROJECTION);					// Selecciona la Matriz de Proyeccion
+	glLoadIdentity();								// Resetea la Matriz de Proyeccion
+
+	// Calcula el radio de aspecto o proporcion de medidas de la ventana
+	gluPerspective(45.0f,(GLfloat)width/(GLfloat)height,1.0f,2000.0f);
+	
+	glMatrixMode(GL_MODELVIEW);							// Selecciona la Matriz de Vista de Modelo
+	glLoadIdentity();									// Resetea la Matriz de Vista de Modelo
+
+	glWidth=width;
+	glHeight=height;
+}
+
+int CargaModelos()
+{
+	if(!g_Load3ds.Load3DSFile(FILE_NAME1c, &g_3DModel1c, textureModel1c))
+		return 0;
+	if(!g_Load3ds.Load3DSFile(FILE_NAME2c, &g_3DModel2c, textureModel2c))
+		return 0;
+	if(!g_Load3ds.Load3DSFile(FILE_NAME3c, &g_3DModel3c, textureModel3c))
+		return 0;
+	if(!g_Load3ds.Load3DSFile(FILE_NAME4c, &g_3DModel4c, textureModel4c))
+		return 0;
+	if(!g_Load3ds.Load3DSFile(FILE_NAME5c, &g_3DModel5c, textureModel5c))
+		return 0;
+	if(!g_Load3ds.Load3DSFile(FILE_NAME6c, &g_3DModel6c, textureModel6c))
+		return 0;
+	if(!g_Load3ds.Load3DSFile(FILE_NAME7c, &g_3DModel7c, textureModel7c))
+		return 0;
+	if(!g_Load3ds.Load3DSFile(FILE_NAME8c, &g_3DModel8c, textureModel8c))
+		return 0;
+
+	if(!g_Load3ds.Load3DSFile(FILE_NAME1e1, &g_3DModel1e1, textureModel1e1))
+		return 0;
+	if(!g_Load3ds.Load3DSFile(FILE_NAME2e1, &g_3DModel2e1, textureModel2e1))
+		return 0;
+	if(!g_Load3ds.Load3DSFile(FILE_NAME3e1, &g_3DModel3e1, textureModel3e1))
+		return 0;
+	if(!g_Load3ds.Load3DSFile(FILE_NAME4e1, &g_3DModel4e1, textureModel4e1))
+		return 0;
+	if(!g_Load3ds.Load3DSFile(FILE_NAME5e1, &g_3DModel5e1, textureModel5e1))
+		return 0;
+	if(!g_Load3ds.Load3DSFile(FILE_NAME6e1, &g_3DModel6e1, textureModel6e1))
+		return 0;
+	if(!g_Load3ds.Load3DSFile(FILE_NAME7e1, &g_3DModel7e1, textureModel7e1))
+		return 0;
+	if(!g_Load3ds.Load3DSFile(FILE_NAME8e1, &g_3DModel8e1, textureModel8e1))
+		return 0;
+
+	if(!g_Load3ds.Load3DSFile(FILE_NAME1e2, &g_3DModel1e2, textureModel1e2))
+		return 0;
+	if(!g_Load3ds.Load3DSFile(FILE_NAME2e2, &g_3DModel2e2, textureModel2e2))
+		return 0;
+	if(!g_Load3ds.Load3DSFile(FILE_NAME3e2, &g_3DModel3e2, textureModel3e2))
+		return 0;
+	if(!g_Load3ds.Load3DSFile(FILE_NAME4e2, &g_3DModel4e2, textureModel4e2))
+		return 0;
+	if(!g_Load3ds.Load3DSFile(FILE_NAME5e2, &g_3DModel5e2, textureModel5e2))
+		return 0;
+	if(!g_Load3ds.Load3DSFile(FILE_NAME6e2, &g_3DModel6e2, textureModel6e2))
+		return 0;
+	if(!g_Load3ds.Load3DSFile(FILE_NAME7e2, &g_3DModel7e2, textureModel7e2))
+		return 0;
+
+	g_Load3ds.Load3DSFile(LLANTA, &g_3DModelLlanta, textureModelLlanta);
+	g_Load3ds.Load3DSFile(TABLA, &g_3DModelTabla, textureModelTabla);
+	
+	return TRUE;
+}
+
+void DescargaModelos()
+{
+	g_Load3ds.UnLoad3DSFile(&g_3DModel1c, textureModel1c);
+	g_Load3ds.UnLoad3DSFile(&g_3DModel2c, textureModel2c);
+	g_Load3ds.UnLoad3DSFile(&g_3DModel3c, textureModel3c);
+	g_Load3ds.UnLoad3DSFile(&g_3DModel4c, textureModel4c);
+	g_Load3ds.UnLoad3DSFile(&g_3DModel5c, textureModel5c);
+	g_Load3ds.UnLoad3DSFile(&g_3DModel6c, textureModel6c);
+	g_Load3ds.UnLoad3DSFile(&g_3DModel7c, textureModel7c);
+	g_Load3ds.UnLoad3DSFile(&g_3DModel8c, textureModel8c);
+
+	g_Load3ds.UnLoad3DSFile(&g_3DModel1e1, textureModel1e1);
+	g_Load3ds.UnLoad3DSFile(&g_3DModel2e1, textureModel2e1);
+	g_Load3ds.UnLoad3DSFile(&g_3DModel3e1, textureModel3e1);
+	g_Load3ds.UnLoad3DSFile(&g_3DModel4e1, textureModel4e1);
+	g_Load3ds.UnLoad3DSFile(&g_3DModel5e1, textureModel5e1);
+	g_Load3ds.UnLoad3DSFile(&g_3DModel6e1, textureModel6e1);
+	g_Load3ds.UnLoad3DSFile(&g_3DModel7e1, textureModel7e1);
+	g_Load3ds.UnLoad3DSFile(&g_3DModel8e1, textureModel8e1);
+	
+	g_Load3ds.UnLoad3DSFile(&g_3DModel1e2, textureModel1e2);
+	g_Load3ds.UnLoad3DSFile(&g_3DModel2e2, textureModel2e2);
+	g_Load3ds.UnLoad3DSFile(&g_3DModel3e2, textureModel3e2);
+	g_Load3ds.UnLoad3DSFile(&g_3DModel4e2, textureModel4e2);
+	g_Load3ds.UnLoad3DSFile(&g_3DModel5e2, textureModel5e2);
+	g_Load3ds.UnLoad3DSFile(&g_3DModel6e2, textureModel6e2);
+	g_Load3ds.UnLoad3DSFile(&g_3DModel7e2, textureModel7e2);
+
+	g_Load3ds.UnLoad3DSFile(&g_3DModelLlanta, textureModelLlanta);
+	g_Load3ds.UnLoad3DSFile(&g_3DModelTabla, textureModelTabla);
+}
+
+void cargaTexturas()
+{
+	textura[0].LoadTGA("Texturas/text1.tga");
+	textura[1].LoadTGA("Texturas/text2.tga");
+	textura[2].LoadTGA("Texturas/text3.tga");
+	textura[3].LoadTGA("Texturas/text4.tga");
+	textura[4].LoadTGA("Texturas/text5.tga");
+	textura[5].LoadTGA("Texturas/text6.tga");
+	textura[6].LoadTGA("Texturas/text7.tga");
+	textura[7].LoadTGA("Texturas/text8.tga");
+	textura[8].LoadTGA("Texturas/text9.tga");
+	textura[9].LoadTGA("Texturas/text10.tga");
+	textura[10].LoadTGA("Texturas/text11.tga");
+	textura[11].LoadTGA("Texturas/text12.tga");
+	textura[12].LoadTGA("Texturas/text13.tga");
+	textura[13].LoadTGA("Texturas/text14.tga");
+	textura[14].LoadTGA("Texturas/text15.tga");
+	textura[15].LoadTGA("Texturas/text16.tga");
+	textura[16].LoadTGA("Texturas/text17.tga");
+	textura[17].LoadTGA("Texturas/text18.tga");
+	textura[18].LoadTGA("Texturas/bote.tga");
+	textura[19].LoadTGA("Texturas/tcamion.tga");
+	textura[20].LoadTGA("Texturas/text19.tga");
+	textura[21].LoadTGA("Texturas/text20.tga");
+	textura[22].LoadTGA("Texturas/text21.tga");
+	textura[23].LoadTGA("Texturas/polvo1.tga");
+	textura[24].LoadTGA("Texturas/polvo2.tga");
+	textura[25].LoadTGA("Texturas/polvo3.tga");
+	textura[26].LoadTGA("Texturas/polvo4.tga");
+}
+
+void descargaTexturas()
+{
+	textura[0].Elimina();
+	textura[1].Elimina();
+	textura[2].Elimina();
+	textura[3].Elimina();
+	textura[4].Elimina();
+	textura[5].Elimina();
+	textura[6].Elimina();
+	textura[7].Elimina();
+	textura[8].Elimina();
+	textura[9].Elimina();
+	textura[10].Elimina();
+	textura[11].Elimina();
+	textura[12].Elimina();
+	textura[13].Elimina();
+	textura[14].Elimina();
+	textura[15].Elimina();
+	textura[16].Elimina();
+	textura[17].Elimina();
+	textura[18].Elimina();
+	textura[19].Elimina();
+	textura[20].Elimina();
+	textura[21].Elimina();
+	textura[22].Elimina();
+	textura[23].Elimina();
+	textura[24].Elimina();
+	textura[25].Elimina();
+	textura[26].Elimina();
+}
+
+void ERRCHECK(FMOD_RESULT result)
+{
+    if (result != FMOD_OK)
+    {
+        printf("FMOD error! (%d) %s\n", result, FMOD_ErrorString(result));
+        exit(-1);
+    }
+}
+
+void LiberaSonido(FMOD_SYSTEM *system, FMOD_RESULT result)
+{
+	result = FMOD_Sound_Release(sound[0]);
+    ERRCHECK(result);
+	result = FMOD_Sound_Release(sound[1]);
+	ERRCHECK(result);
+	result = FMOD_Sound_Release(sound[2]);
+	ERRCHECK(result);
+	result = FMOD_Sound_Release(sound[3]);
+	ERRCHECK(result);
+	result = FMOD_Sound_Release(sound[4]);
+	ERRCHECK(result);
+	result = FMOD_Sound_Release(sound[5]);
+	ERRCHECK(result);
+	
+	result = FMOD_System_Close(system);
+	ERRCHECK(result);
+   	result = FMOD_System_Release(system);
+	ERRCHECK(result);
+}
+
+void InicializaAnim()
+{
+	//player 1
+	//Se inicializan las variables de la secuencia 1
+	for(int i=0; i<maxKF1; i++)
+	{
+		KeyFrame1p1[i].Angt1=0.0f;
+		KeyFrame1p1[i].Angt2=0.0f;
+		KeyFrame1p1[i].Angc1=0.0f;
+		KeyFrame1p1[i].Angc2=0.0f;
+		KeyFrame1p1[i].Angbi1=0.0f;
+		KeyFrame1p1[i].Angbi2=0.0f;
+		KeyFrame1p1[i].Angbib=0.0f;
+		KeyFrame1p1[i].Angbd1=0.0f;
+		KeyFrame1p1[i].Angbd2=0.0f;
+		KeyFrame1p1[i].Angbdb=0.0f;
+		KeyFrame1p1[i].Angpizq=0.0f;
+		KeyFrame1p1[i].Angpder=0.0f;
+		KeyFrame1p1[i].Angpi=0.0f;
+		KeyFrame1p1[i].Angpd=0.0f;
+		KeyFrame1p1[i].Xtor=0.0f;
+		KeyFrame1p1[i].Ytor=0.0f;
+		KeyFrame1p1[i].Ztor=0.0f;
+
+		KeyFrame1p1[i].incAngt1=0.0f;
+		KeyFrame1p1[i].incAngt1=0.0f;
+		KeyFrame1p1[i].incAngc1=0.0f;
+		KeyFrame1p1[i].incAngc2=0.0f;
+		KeyFrame1p1[i].incAngbi1=0.0f;
+		KeyFrame1p1[i].incAngbi2=0.0f;
+		KeyFrame1p1[i].incAngbib=0.0f;
+		KeyFrame1p1[i].incAngbd1=0.0f;
+		KeyFrame1p1[i].incAngbd2=0.0f;
+		KeyFrame1p1[i].incAngbdb=0.0f;
+		KeyFrame1p1[i].incAngpizq=0.0f;
+		KeyFrame1p1[i].incAngpder=0.0f;
+		KeyFrame1p1[i].incAngpi=0.0f;
+		KeyFrame1p1[i].incAngpd=0.0f;
+		KeyFrame1p1[i].incXtor=0.0f;
+		KeyFrame1p1[i].incYtor=0.0f;
+		KeyFrame1p1[i].incZtor=0.0f;
+	}
+
+	for(int i=0; i<maxKF2; i++)
+	{
+		KeyFrame2p1[i].Angt1=0.0f;
+		KeyFrame2p1[i].Angt2=0.0f;
+		KeyFrame2p1[i].Angc1=0.0f;
+		KeyFrame2p1[i].Angc2=0.0f;
+		KeyFrame2p1[i].Angbi1=0.0f;
+		KeyFrame2p1[i].Angbi2=0.0f;
+		KeyFrame2p1[i].Angbib=0.0f;
+		KeyFrame2p1[i].Angbd1=0.0f;
+		KeyFrame2p1[i].Angbd2=0.0f;
+		KeyFrame2p1[i].Angbdb=0.0f;
+		KeyFrame2p1[i].Angpizq=0.0f;
+		KeyFrame2p1[i].Angpder=0.0f;
+		KeyFrame2p1[i].Angpi=0.0f;
+		KeyFrame2p1[i].Angpd=0.0f;
+		KeyFrame2p1[i].Xtor=0.0f;
+		KeyFrame2p1[i].Ytor=0.0f;
+		KeyFrame2p1[i].Ztor=0.0f;
+
+		KeyFrame2p1[i].incAngt1=0.0f;
+		KeyFrame2p1[i].incAngt1=0.0f;
+		KeyFrame2p1[i].incAngc1=0.0f;
+		KeyFrame2p1[i].incAngc2=0.0f;
+		KeyFrame2p1[i].incAngbi1=0.0f;
+		KeyFrame2p1[i].incAngbi2=0.0f;
+		KeyFrame2p1[i].incAngbib=0.0f;
+		KeyFrame2p1[i].incAngbd1=0.0f;
+		KeyFrame2p1[i].incAngbd2=0.0f;
+		KeyFrame2p1[i].incAngbdb=0.0f;
+		KeyFrame2p1[i].incAngpizq=0.0f;
+		KeyFrame2p1[i].incAngpder=0.0f;
+		KeyFrame2p1[i].incAngpi=0.0f;
+		KeyFrame2p1[i].incAngpd=0.0f;
+		KeyFrame2p1[i].incXtor=0.0f;
+		KeyFrame2p1[i].incYtor=0.0f;
+		KeyFrame2p1[i].incZtor=0.0f;
+	}
+
+	for(int i=0; i<maxKF3; i++)
+	{
+		KeyFrame3p1[i].Angt1=0.0f;
+		KeyFrame3p1[i].Angt2=0.0f;
+		KeyFrame3p1[i].Angc1=0.0f;
+		KeyFrame3p1[i].Angc2=0.0f;
+		KeyFrame3p1[i].Angbi1=0.0f;
+		KeyFrame3p1[i].Angbi2=0.0f;
+		KeyFrame3p1[i].Angbib=0.0f;
+		KeyFrame3p1[i].Angbd1=0.0f;
+		KeyFrame3p1[i].Angbd2=0.0f;
+		KeyFrame3p1[i].Angbdb=0.0f;
+		KeyFrame3p1[i].Angpizq=0.0f;
+		KeyFrame3p1[i].Angpder=0.0f;
+		KeyFrame3p1[i].Angpi=0.0f;
+		KeyFrame3p1[i].Angpd=0.0f;
+		KeyFrame3p1[i].Xtor=0.0f;
+		KeyFrame3p1[i].Ytor=0.0f;
+		KeyFrame3p1[i].Ztor=0.0f;
+
+		KeyFrame3p1[i].incAngt1=0.0f;
+		KeyFrame3p1[i].incAngt1=0.0f;
+		KeyFrame3p1[i].incAngc1=0.0f;
+		KeyFrame3p1[i].incAngc2=0.0f;
+		KeyFrame3p1[i].incAngbi1=0.0f;
+		KeyFrame3p1[i].incAngbi2=0.0f;
+		KeyFrame3p1[i].incAngbib=0.0f;
+		KeyFrame3p1[i].incAngbd1=0.0f;
+		KeyFrame3p1[i].incAngbd2=0.0f;
+		KeyFrame3p1[i].incAngbdb=0.0f;
+		KeyFrame3p1[i].incAngpizq=0.0f;
+		KeyFrame3p1[i].incAngpder=0.0f;
+		KeyFrame3p1[i].incAngpi=0.0f;
+		KeyFrame3p1[i].incAngpd=0.0f;
+		KeyFrame3p1[i].incXtor=0.0f;
+		KeyFrame3p1[i].incYtor=0.0f;
+		KeyFrame3p1[i].incZtor=0.0f;
+	}
+	
+	//enemigo 1
+	//Se inicializan las variables de la secuencia 1
+	for(int i=0; i<maxKF1; i++)
+	{
+		KeyFrame1e1[i].Angt1=0.0f;
+		KeyFrame1e1[i].Angt2=0.0f;
+		KeyFrame1e1[i].Angc1=0.0f;
+		KeyFrame1e1[i].Angc2=0.0f;
+		KeyFrame1e1[i].Angbi1=0.0f;
+		KeyFrame1e1[i].Angbi2=0.0f;
+		KeyFrame1e1[i].Angbib=0.0f;
+		KeyFrame1e1[i].Angbd1=0.0f;
+		KeyFrame1e1[i].Angbd2=0.0f;
+		KeyFrame1e1[i].Angbdb=0.0f;
+		KeyFrame1e1[i].Angpizq=0.0f;
+		KeyFrame1e1[i].Angpder=0.0f;
+		KeyFrame1e1[i].Angpi=0.0f;
+		KeyFrame1e1[i].Angpd=0.0f;
+		KeyFrame1e1[i].Xtor=0.0f;
+		KeyFrame1e1[i].Ytor=0.0f;
+		KeyFrame1e1[i].Ztor=0.0f;
+
+		KeyFrame1e1[i].incAngt1=0.0f;
+		KeyFrame1e1[i].incAngt1=0.0f;
+		KeyFrame1e1[i].incAngc1=0.0f;
+		KeyFrame1e1[i].incAngc2=0.0f;
+		KeyFrame1e1[i].incAngbi1=0.0f;
+		KeyFrame1e1[i].incAngbi2=0.0f;
+		KeyFrame1e1[i].incAngbib=0.0f;
+		KeyFrame1e1[i].incAngbd1=0.0f;
+		KeyFrame1e1[i].incAngbd2=0.0f;
+		KeyFrame1e1[i].incAngbdb=0.0f;
+		KeyFrame1e1[i].incAngpizq=0.0f;
+		KeyFrame1e1[i].incAngpder=0.0f;
+		KeyFrame1e1[i].incAngpi=0.0f;
+		KeyFrame1e1[i].incAngpd=0.0f;
+		KeyFrame1e1[i].incXtor=0.0f;
+		KeyFrame1e1[i].incYtor=0.0f;
+		KeyFrame1e1[i].incZtor=0.0f;
+	}
+
+	for(int i=0; i<maxKF2; i++)
+	{
+		KeyFrame2e1[i].Angt1=0.0f;
+		KeyFrame2e1[i].Angt2=0.0f;
+		KeyFrame2e1[i].Angc1=0.0f;
+		KeyFrame2e1[i].Angc2=0.0f;
+		KeyFrame2e1[i].Angbi1=0.0f;
+		KeyFrame2e1[i].Angbi2=0.0f;
+		KeyFrame2e1[i].Angbib=0.0f;
+		KeyFrame2e1[i].Angbd1=0.0f;
+		KeyFrame2e1[i].Angbd2=0.0f;
+		KeyFrame2e1[i].Angbdb=0.0f;
+		KeyFrame2e1[i].Angpizq=0.0f;
+		KeyFrame2e1[i].Angpder=0.0f;
+		KeyFrame2e1[i].Angpi=0.0f;
+		KeyFrame2e1[i].Angpd=0.0f;
+		KeyFrame2e1[i].Xtor=0.0f;
+		KeyFrame2e1[i].Ytor=0.0f;
+		KeyFrame2e1[i].Ztor=0.0f;
+
+		KeyFrame2e1[i].incAngt1=0.0f;
+		KeyFrame2e1[i].incAngt1=0.0f;
+		KeyFrame2e1[i].incAngc1=0.0f;
+		KeyFrame2e1[i].incAngc2=0.0f;
+		KeyFrame2e1[i].incAngbi1=0.0f;
+		KeyFrame2e1[i].incAngbi2=0.0f;
+		KeyFrame2e1[i].incAngbib=0.0f;
+		KeyFrame2e1[i].incAngbd1=0.0f;
+		KeyFrame2e1[i].incAngbd2=0.0f;
+		KeyFrame2e1[i].incAngbdb=0.0f;
+		KeyFrame2e1[i].incAngpizq=0.0f;
+		KeyFrame2e1[i].incAngpder=0.0f;
+		KeyFrame2e1[i].incAngpi=0.0f;
+		KeyFrame2e1[i].incAngpd=0.0f;
+		KeyFrame2e1[i].incXtor=0.0f;
+		KeyFrame2e1[i].incYtor=0.0f;
+		KeyFrame2e1[i].incZtor=0.0f;
+	}
+
+	//enemigo 2
+	//Se inicializan las variables de la secuencia 1
+	for(int i=0; i<maxKF1; i++)
+	{
+		KeyFrame1e2[i].Angt1=0.0f;
+		KeyFrame1e2[i].Angt2=0.0f;
+		KeyFrame1e2[i].Angc1=0.0f;
+		KeyFrame1e2[i].Angc2=0.0f;
+		KeyFrame1e2[i].Angbi1=0.0f;
+		KeyFrame1e2[i].Angbi2=0.0f;
+		KeyFrame1e2[i].Angbib=0.0f;
+		KeyFrame1e2[i].Angbd1=0.0f;
+		KeyFrame1e2[i].Angbd2=0.0f;
+		KeyFrame1e2[i].Angbdb=0.0f;
+		KeyFrame1e2[i].Angpizq=0.0f;
+		KeyFrame1e2[i].Angpder=0.0f;
+		KeyFrame1e2[i].Angpi=0.0f;
+		KeyFrame1e2[i].Angpd=0.0f;
+		KeyFrame1e2[i].Xtor=0.0f;
+		KeyFrame1e2[i].Ytor=0.0f;
+		KeyFrame1e2[i].Ztor=0.0f;
+
+		KeyFrame1e2[i].incAngt1=0.0f;
+		KeyFrame1e2[i].incAngt1=0.0f;
+		KeyFrame1e2[i].incAngc1=0.0f;
+		KeyFrame1e2[i].incAngc2=0.0f;
+		KeyFrame1e2[i].incAngbi1=0.0f;
+		KeyFrame1e2[i].incAngbi2=0.0f;
+		KeyFrame1e2[i].incAngbib=0.0f;
+		KeyFrame1e2[i].incAngbd1=0.0f;
+		KeyFrame1e2[i].incAngbd2=0.0f;
+		KeyFrame1e2[i].incAngbdb=0.0f;
+		KeyFrame1e2[i].incAngpizq=0.0f;
+		KeyFrame1e2[i].incAngpder=0.0f;
+		KeyFrame1e2[i].incAngpi=0.0f;
+		KeyFrame1e2[i].incAngpd=0.0f;
+		KeyFrame1e2[i].incXtor=0.0f;
+		KeyFrame1e2[i].incYtor=0.0f;
+		KeyFrame1e2[i].incZtor=0.0f;
+	}
+
+	for(int i=0; i<maxKF2; i++)
+	{
+		KeyFrame2e2[i].Angt1=0.0f;
+		KeyFrame2e2[i].Angt2=0.0f;
+		KeyFrame2e2[i].Angc1=0.0f;
+		KeyFrame2e2[i].Angc2=0.0f;
+		KeyFrame2e2[i].Angbi1=0.0f;
+		KeyFrame2e2[i].Angbi2=0.0f;
+		KeyFrame2e2[i].Angbib=0.0f;
+		KeyFrame2e2[i].Angbd1=0.0f;
+		KeyFrame2e2[i].Angbd2=0.0f;
+		KeyFrame2e2[i].Angbdb=0.0f;
+		KeyFrame2e2[i].Angpizq=0.0f;
+		KeyFrame2e2[i].Angpder=0.0f;
+		KeyFrame2e2[i].Angpi=0.0f;
+		KeyFrame2e2[i].Angpd=0.0f;
+		KeyFrame2e2[i].Xtor=0.0f;
+		KeyFrame2e2[i].Ytor=0.0f;
+		KeyFrame2e2[i].Ztor=0.0f;
+
+		KeyFrame2e2[i].incAngt1=0.0f;
+		KeyFrame2e2[i].incAngt1=0.0f;
+		KeyFrame2e2[i].incAngc1=0.0f;
+		KeyFrame2e2[i].incAngc2=0.0f;
+		KeyFrame2e2[i].incAngbi1=0.0f;
+		KeyFrame2e2[i].incAngbi2=0.0f;
+		KeyFrame2e2[i].incAngbib=0.0f;
+		KeyFrame2e2[i].incAngbd1=0.0f;
+		KeyFrame2e2[i].incAngbd2=0.0f;
+		KeyFrame2e2[i].incAngbdb=0.0f;
+		KeyFrame2e2[i].incAngpizq=0.0f;
+		KeyFrame2e2[i].incAngpder=0.0f;
+		KeyFrame2e2[i].incAngpi=0.0f;
+		KeyFrame2e2[i].incAngpd=0.0f;
+		KeyFrame2e2[i].incXtor=0.0f;
+		KeyFrame2e2[i].incYtor=0.0f;
+		KeyFrame2e2[i].incZtor=0.0f;
+	}
+
+	varsAnimP1.play=false;
+	varsAnimP1.playIndex=0;
+	varsAnimP1.tipoAnim=1;
+
+	varsAnimE1.play=true;
+	varsAnimE1.playIndex=0;
+	varsAnimE1.tipoAnim=1;
+
+	varsAnimE2.play=true;
+	varsAnimE2.playIndex=0;
+	varsAnimE2.tipoAnim=1;
+
+}
+
+void DatosAnimacion()
+{
+	//player 1
+	//Secuencia 1 (caminar)
+	KeyFrame1p1[0].Angt1=12.0f;
+	KeyFrame1p1[0].Angt2=0.0f;
+	KeyFrame1p1[0].Angc1=-9.0f;
+	KeyFrame1p1[0].Angc2=0.0f;
+	KeyFrame1p1[0].Angbi1=-90.0f;
+	KeyFrame1p1[0].Angbi2=0.0f;
+	KeyFrame1p1[0].Angbib=0.0f;
+	KeyFrame1p1[0].Angbd1=90.0f;
+	KeyFrame1p1[0].Angbd2=0.0f;
+	KeyFrame1p1[0].Angbdb=0.0f;
+	KeyFrame1p1[0].Angpizq=50.0f;
+	KeyFrame1p1[0].Angpder=-80.0f;
+	KeyFrame1p1[0].Angpi=40.0f;
+	KeyFrame1p1[0].Angpd=50.0f;
+	KeyFrame1p1[0].Xtor=0.0f;
+	KeyFrame1p1[0].Ytor=0.0f;
+	KeyFrame1p1[0].Ztor=0.0f;
+
+	KeyFrame1p1[1].Angt1=5.0f;
+	KeyFrame1p1[1].Angt2=0.0f;
+	KeyFrame1p1[1].Angc1=-4.0f;
+	KeyFrame1p1[1].Angc2=0.0f;
+	KeyFrame1p1[1].Angbi1=90.0f;
+	KeyFrame1p1[1].Angbi2=0.0f;
+	KeyFrame1p1[1].Angbib=0.0f;
+	KeyFrame1p1[1].Angbd1=-90.0f;
+	KeyFrame1p1[1].Angbd2=0.0f;
+	KeyFrame1p1[1].Angbdb=0.0f;
+	KeyFrame1p1[1].Angpizq=-80.0f;
+	KeyFrame1p1[1].Angpder=50.0f;
+	KeyFrame1p1[1].Angpi=50.0f;
+	KeyFrame1p1[1].Angpd=40.0f;
+	KeyFrame1p1[1].Xtor=0.0f;
+	KeyFrame1p1[1].Ytor=0.0f;
+	KeyFrame1p1[1].Ztor=0.0f;
+
+	KeyFrame1p1[2].Angt1=12.0f;
+	KeyFrame1p1[2].Angt2=0.0f;
+	KeyFrame1p1[2].Angc1=-9.0f;
+	KeyFrame1p1[2].Angc2=0.0f;
+	KeyFrame1p1[2].Angbi1=-60.0f;
+	KeyFrame1p1[2].Angbi2=0.0f;
+	KeyFrame1p1[2].Angbib=0.0f;
+	KeyFrame1p1[2].Angbd1=60.0f;
+	KeyFrame1p1[2].Angbd2=0.0f;
+	KeyFrame1p1[2].Angbdb=0.0f;
+	KeyFrame1p1[2].Angpizq=50.0f;
+	KeyFrame1p1[2].Angpder=-80.0f;
+	KeyFrame1p1[2].Angpi=40.0f;
+	KeyFrame1p1[2].Angpd=30.0f;
+	KeyFrame1p1[2].Xtor=0.0f;
+	KeyFrame1p1[2].Ytor=0.0f;
+	KeyFrame1p1[2].Ztor=0.0f;
+
+	//Secuencia 2 (Patada)
+	//Cambiar los valores de la secuencia 2 para el tipo de movimiento solicitado
+	KeyFrame2p1[0].Angt1=0.0f;
+	KeyFrame2p1[0].Angt2=0.0f;
+	KeyFrame2p1[0].Angc1=0.0f;
+	KeyFrame2p1[0].Angc2=0.0f;
+	KeyFrame2p1[0].Angbi1=-90.0f;
+	KeyFrame2p1[0].Angbi2=0.0f;
+	KeyFrame2p1[0].Angbib=0.0f;
+	KeyFrame2p1[0].Angbd1=-90.0f;
+	KeyFrame2p1[0].Angbd2=0.0f;
+	KeyFrame2p1[0].Angbdb=0.0f;
+	KeyFrame2p1[0].Angpizq=-60.0f;
+	KeyFrame2p1[0].Angpder=10.0f;
+	KeyFrame2p1[0].Angpi=80.0f;
+	KeyFrame2p1[0].Angpd=20.0f;
+	KeyFrame2p1[0].Xtor=0.0f;
+	KeyFrame2p1[0].Ytor=0.0f;
+	KeyFrame2p1[0].Ztor=0.0f;
+
+	KeyFrame2p1[1].Angt1=0.0f;
+	KeyFrame2p1[1].Angt2=0.0f;
+	KeyFrame2p1[1].Angc1=0.0f;
+	KeyFrame2p1[1].Angc2=0.0f;
+	KeyFrame2p1[1].Angbi1=-60.0f;
+	KeyFrame2p1[1].Angbi2=0.0f;
+	KeyFrame2p1[1].Angbib=0.0f;
+	KeyFrame2p1[1].Angbd1=60.0f;
+	KeyFrame2p1[1].Angbd2=0.0f;
+	KeyFrame2p1[1].Angbdb=0.0f;
+	KeyFrame2p1[1].Angpizq=-100.0f;
+	KeyFrame2p1[1].Angpder=-10.0f;
+	KeyFrame2p1[1].Angpi=90.0f;
+	KeyFrame2p1[1].Angpd=30.0f;
+	KeyFrame2p1[1].Xtor=0.0f;
+	KeyFrame2p1[1].Ytor=2.0f;
+	KeyFrame2p1[1].Ztor=0.0f;
+
+	KeyFrame2p1[2].Angt1=-10.0f;
+	KeyFrame2p1[2].Angt2=0.0f;
+	KeyFrame2p1[2].Angc1=0.0f;
+	KeyFrame2p1[2].Angc2=0.0f;
+	KeyFrame2p1[2].Angbi1=-120.0f;
+	KeyFrame2p1[2].Angbi2=0.0f;
+	KeyFrame2p1[2].Angbib=0.0f;
+	KeyFrame2p1[2].Angbd1=80.0f;
+	KeyFrame2p1[2].Angbd2=0.0f;
+	KeyFrame2p1[2].Angbdb=0.0f;
+	KeyFrame2p1[2].Angpizq=-120.0f;
+	KeyFrame2p1[2].Angpder=-70.0f;
+	KeyFrame2p1[2].Angpi=0.0f;
+	KeyFrame2p1[2].Angpd=80.0f;
+	KeyFrame2p1[2].Xtor=0.0f;
+	KeyFrame2p1[2].Ytor=5.0f;
+	KeyFrame2p1[2].Ztor=0.0f;
+
+	KeyFrame2p1[3].Angt1=-10.0f;
+	KeyFrame2p1[3].Angt2=0.0f;
+	KeyFrame2p1[3].Angc1=0.0f;
+	KeyFrame2p1[3].Angc2=0.0f;
+	KeyFrame2p1[3].Angbi1=-130.0f;
+	KeyFrame2p1[3].Angbi2=0.0f;
+	KeyFrame2p1[3].Angbib=0.0f;
+	KeyFrame2p1[3].Angbd1=80.0f;
+	KeyFrame2p1[3].Angbd2=0.0f;
+	KeyFrame2p1[3].Angbdb=0.0f;
+	KeyFrame2p1[3].Angpizq=-120.0f;
+	KeyFrame2p1[3].Angpder=-70.0f;
+	KeyFrame2p1[3].Angpi=0.0f;
+	KeyFrame2p1[3].Angpd=80.0f;
+	KeyFrame2p1[3].Xtor=0.0f;
+	KeyFrame2p1[3].Ytor=5.5f;
+	KeyFrame2p1[3].Ztor=0.0f;
+
+	KeyFrame2p1[4].Angt1=-10.0f;
+	KeyFrame2p1[4].Angt2=0.0f;
+	KeyFrame2p1[4].Angc1=0.0f;
+	KeyFrame2p1[4].Angc2=0.0f;
+	KeyFrame2p1[4].Angbi1=-120.0f;
+	KeyFrame2p1[4].Angbi2=0.0f;
+	KeyFrame2p1[4].Angbib=0.0f;
+	KeyFrame2p1[4].Angbd1=80.0f;
+	KeyFrame2p1[4].Angbd2=0.0f;
+	KeyFrame2p1[4].Angbdb=0.0f;
+	KeyFrame2p1[4].Angpizq=-120.0f;
+	KeyFrame2p1[4].Angpder=-70.0f;
+	KeyFrame2p1[4].Angpi=0.0f;
+	KeyFrame2p1[4].Angpd=80.0f;
+	KeyFrame2p1[4].Xtor=0.0f;
+	KeyFrame2p1[4].Ytor=5.0f;
+	KeyFrame2p1[4].Ztor=0.0f;
+
+	KeyFrame2p1[5].Angt1=20.0f;
+	KeyFrame2p1[5].Angt2=0.0f;
+	KeyFrame2p1[5].Angc1=-10.0f;
+	KeyFrame2p1[5].Angc2=0.0f;
+	KeyFrame2p1[5].Angbi1=20.0f;
+	KeyFrame2p1[5].Angbi2=0.0f;
+	KeyFrame2p1[5].Angbib=0.0f;
+	KeyFrame2p1[5].Angbd1=-20.0f;
+	KeyFrame2p1[5].Angbd2=0.0f;
+	KeyFrame2p1[5].Angbdb=0.0f;
+	KeyFrame2p1[5].Angpizq=-110.0f;
+	KeyFrame2p1[5].Angpder=-20.0f;
+	KeyFrame2p1[5].Angpi=90.0f;
+	KeyFrame2p1[5].Angpd=90.0f;
+	KeyFrame2p1[5].Xtor=0.0f;
+	KeyFrame2p1[5].Ytor=-0.8f;
+	KeyFrame2p1[5].Ztor=0.0f;
+
+	KeyFrame2p1[6].Angt1=20.0f;
+	KeyFrame2p1[6].Angt2=0.0f;
+	KeyFrame2p1[6].Angc1=-10.0f;
+	KeyFrame2p1[6].Angc2=0.0f;
+	KeyFrame2p1[6].Angbi1=0.0f;
+	KeyFrame2p1[6].Angbi2=0.0f;
+	KeyFrame2p1[6].Angbib=0.0f;
+	KeyFrame2p1[6].Angbd1=-30.0f;
+	KeyFrame2p1[6].Angbd2=0.0f;
+	KeyFrame2p1[6].Angbdb=0.0f;
+	KeyFrame2p1[6].Angpizq=-110.0f;
+	KeyFrame2p1[6].Angpder=-20.0f;
+	KeyFrame2p1[6].Angpi=90.0f;
+	KeyFrame2p1[6].Angpd=90.0f;
+	KeyFrame2p1[6].Xtor=0.0f;
+	KeyFrame2p1[6].Ytor=-0.8f;
+	KeyFrame2p1[6].Ztor=0.0f;
+
+	KeyFrame2p1[7].Angt1=0.0f;
+	KeyFrame2p1[7].Angt2=0.0f;
+	KeyFrame2p1[7].Angc1=0.0f;
+	KeyFrame2p1[7].Angc2=0.0f;
+	KeyFrame2p1[7].Angbi1=0.0f;
+	KeyFrame2p1[7].Angbi2=0.0f;
+	KeyFrame2p1[7].Angbib=0.0f;
+	KeyFrame2p1[7].Angbd1=0.0f;
+	KeyFrame2p1[7].Angbd2=0.0f;
+	KeyFrame2p1[7].Angbdb=0.0f;
+	KeyFrame2p1[7].Angpizq=0.0f;
+	KeyFrame2p1[7].Angpder=0.0f;
+	KeyFrame2p1[7].Angpi=0.0f;
+	KeyFrame2p1[7].Angpd=0.0f;
+	KeyFrame2p1[7].Xtor=0.0f;
+	KeyFrame2p1[7].Ytor=0.0f;
+	KeyFrame2p1[7].Ztor=0.0f;
+
+	//Secuencia 3 (en la patineta direccion 1)
+	KeyFrame3p1[0].Angt1=10.0f;
+	KeyFrame3p1[0].Angt2=50.0f;
+	KeyFrame3p1[0].Angc1=0.0f;
+	KeyFrame3p1[0].Angc2=-30.0f;
+	KeyFrame3p1[0].Angbi1=30.0f;
+	KeyFrame3p1[0].Angbi2=60.0f;
+	KeyFrame3p1[0].Angbib=0.0f;
+	KeyFrame3p1[0].Angbd1=-30.0f;
+	KeyFrame3p1[0].Angbd2=-60.0f;
+	KeyFrame3p1[0].Angbdb=0.0f;
+	KeyFrame3p1[0].Angpizq=-10.0f;
+	KeyFrame3p1[0].Angpder=-10.0f;
+	KeyFrame3p1[0].Angpi=0.0f;
+	KeyFrame3p1[0].Angpd=0.0f;
+	KeyFrame3p1[0].Xtor=0.0f;
+	KeyFrame3p1[0].Ytor=0.0f;
+	KeyFrame3p1[0].Ztor=0.0f;
+
+	KeyFrame3p1[1].Angt1=10.0f;
+	KeyFrame3p1[1].Angt2=50.0f;
+	KeyFrame3p1[1].Angc1=0.0f;
+	KeyFrame3p1[1].Angc2=-30.0f;
+	KeyFrame3p1[1].Angbi1=30.0f;
+	KeyFrame3p1[1].Angbi2=55.0f;
+	KeyFrame3p1[1].Angbib=0.0f;
+	KeyFrame3p1[1].Angbd1=-30.0f;
+	KeyFrame3p1[1].Angbd2=-55.0f;
+	KeyFrame3p1[1].Angbdb=0.0f;
+	KeyFrame3p1[1].Angpizq=-10.0f;
+	KeyFrame3p1[1].Angpder=-10.0f;
+	KeyFrame3p1[1].Angpi=0.0f;
+	KeyFrame3p1[1].Angpd=0.0f;
+	KeyFrame3p1[1].Xtor=0.0f;
+	KeyFrame3p1[1].Ytor=0.0f;
+	KeyFrame3p1[1].Ztor=0.0f;
+
+	KeyFrame3p1[2].Angt1=20.0f;
+	KeyFrame3p1[2].Angt2=50.0f;
+	KeyFrame3p1[2].Angc1=0.0f;
+	KeyFrame3p1[2].Angc2=-30.0f;
+	KeyFrame3p1[2].Angbi1=30.0f;
+	KeyFrame3p1[2].Angbi2=60.0f;
+	KeyFrame3p1[2].Angbib=0.0f;
+	KeyFrame3p1[2].Angbd1=-30.0f;
+	KeyFrame3p1[2].Angbd2=-60.0f;
+	KeyFrame3p1[2].Angbdb=0.0f;
+	KeyFrame3p1[2].Angpizq=-35.0f;
+	KeyFrame3p1[2].Angpder=-35.0f;
+	KeyFrame3p1[2].Angpi=30.0f;
+	KeyFrame3p1[2].Angpd=30.0f;
+	KeyFrame3p1[2].Xtor=0.0f;
+	KeyFrame3p1[2].Ytor=-0.2f;
+	KeyFrame3p1[2].Ztor=0.0f;
+
+	KeyFrame3p1[3].Angt1=10.0f;
+	KeyFrame3p1[3].Angt2=50.0f;
+	KeyFrame3p1[3].Angc1=0.0f;
+	KeyFrame3p1[3].Angc2=-30.0f;
+	KeyFrame3p1[3].Angbi1=30.0f;
+	KeyFrame3p1[3].Angbi2=55.0f;
+	KeyFrame3p1[3].Angbib=0.0f;
+	KeyFrame3p1[3].Angbd1=-30.0f;
+	KeyFrame3p1[3].Angbd2=-55.0f;
+	KeyFrame3p1[3].Angbdb=0.0f;
+	KeyFrame3p1[3].Angpizq=-10.0f;
+	KeyFrame3p1[3].Angpder=-10.0f;
+	KeyFrame3p1[3].Angpi=0.0f;
+	KeyFrame3p1[3].Angpd=0.0f;
+	KeyFrame3p1[3].Xtor=0.0f;
+	KeyFrame3p1[3].Ytor=0.0f;
+	KeyFrame3p1[3].Ztor=0.0f;
+
+	KeyFrame3p1[4].Angt1=20.0f;
+	KeyFrame3p1[4].Angt2=50.0f;
+	KeyFrame3p1[4].Angc1=0.0f;
+	KeyFrame3p1[4].Angc2=-30.0f;
+	KeyFrame3p1[4].Angbi1=30.0f;
+	KeyFrame3p1[4].Angbi2=60.0f;
+	KeyFrame3p1[4].Angbib=0.0f;
+	KeyFrame3p1[4].Angbd1=-30.0f;
+	KeyFrame3p1[4].Angbd2=-60.0f;
+	KeyFrame3p1[4].Angbdb=0.0f;
+	KeyFrame3p1[4].Angpizq=-35.0f;
+	KeyFrame3p1[4].Angpder=-35.0f;
+	KeyFrame3p1[4].Angpi=30.0f;
+	KeyFrame3p1[4].Angpd=30.0f;
+	KeyFrame3p1[4].Xtor=0.0f;
+	KeyFrame3p1[4].Ytor=-0.2f;
+	KeyFrame3p1[4].Ztor=0.0f;
+
+	KeyFrame3p1[5].Angt1=45.0f;
+	KeyFrame3p1[5].Angt2=5.0f;
+	KeyFrame3p1[5].Angc1=0.0f;
+	KeyFrame3p1[5].Angc2=-10.0f;
+	KeyFrame3p1[5].Angbi1=30.0f;
+	KeyFrame3p1[5].Angbi2=20.0f;
+	KeyFrame3p1[5].Angbib=0.0f;
+	KeyFrame3p1[5].Angbd1=-20.0f;
+	KeyFrame3p1[5].Angbd2=-40.0f;
+	KeyFrame3p1[5].Angbdb=0.0f;
+	KeyFrame3p1[5].Angpizq=-110.0f;
+	KeyFrame3p1[5].Angpder=-5.0f;
+	KeyFrame3p1[5].Angpi=100.0f;
+	KeyFrame3p1[5].Angpd=20.0f;
+	KeyFrame3p1[5].Xtor=0.0f;
+	KeyFrame3p1[5].Ytor=-0.7f;
+	KeyFrame3p1[5].Ztor=0.0f;
+
+	KeyFrame3p1[6].Angt1=30.0f;
+	KeyFrame3p1[6].Angt2=5.0f;
+	KeyFrame3p1[6].Angc1=0.0f;
+	KeyFrame3p1[6].Angc2=-20.0f;
+	KeyFrame3p1[6].Angbi1=40.0f;
+	KeyFrame3p1[6].Angbi2=20.0f;
+	KeyFrame3p1[6].Angbib=0.0f;
+	KeyFrame3p1[6].Angbd1=-30.0f;
+	KeyFrame3p1[6].Angbd2=-40.0f;
+	KeyFrame3p1[6].Angbdb=0.0f;
+	KeyFrame3p1[6].Angpizq=-70.0f;
+	KeyFrame3p1[6].Angpder=-20.0f;
+	KeyFrame3p1[6].Angpi=60.0f;
+	KeyFrame3p1[6].Angpd=20.0f;
+	KeyFrame3p1[6].Xtor=0.0f;
+	KeyFrame3p1[6].Ytor=-0.2f;
+	KeyFrame3p1[6].Ztor=0.0f;
+
+	//enemigo 1
+	//Secuencia 1 (caminar)
+	KeyFrame1e1[0].Angt1=0.0f;
+	KeyFrame1e1[0].Angt2=0.0f;
+	KeyFrame1e1[0].Angc1=0.0f;
+	KeyFrame1e1[0].Angc2=0.0f;
+	KeyFrame1e1[0].Angbi1=-50.0f;
+	KeyFrame1e1[0].Angbi2=0.0f;
+	KeyFrame1e1[0].Angbib=0.0f;
+	KeyFrame1e1[0].Angbd1=60.0f;
+	KeyFrame1e1[0].Angbd2=0.0f;
+	KeyFrame1e1[0].Angbdb=0.0f;
+	KeyFrame1e1[0].Angpizq=40.0f;
+	KeyFrame1e1[0].Angpder=-60.0f;
+	KeyFrame1e1[0].Angpi=0.0f;
+	KeyFrame1e1[0].Angpd=0.0f;
+	KeyFrame1e1[0].Xtor=0.0f;
+	KeyFrame1e1[0].Ytor=0.0f;
+	KeyFrame1e1[0].Ztor=0.0f;
+
+	KeyFrame1e1[1].Angt1=0.0f;
+	KeyFrame1e1[1].Angt2=0.0f;
+	KeyFrame1e1[1].Angc1=0.0f;
+	KeyFrame1e1[1].Angc2=0.0f;
+	KeyFrame1e1[1].Angbi1=60.0f;
+	KeyFrame1e1[1].Angbi2=0.0f;
+	KeyFrame1e1[1].Angbib=0.0f;
+	KeyFrame1e1[1].Angbd1=-50.0f;
+	KeyFrame1e1[1].Angbd2=0.0f;
+	KeyFrame1e1[1].Angbdb=0.0f;
+	KeyFrame1e1[1].Angpizq=-60.0f;
+	KeyFrame1e1[1].Angpder=40.0f;
+	KeyFrame1e1[1].Angpi=0.0f;
+	KeyFrame1e1[1].Angpd=0.0f;
+	KeyFrame1e1[1].Xtor=0.0f;
+	KeyFrame1e1[1].Ytor=0.0f;
+	KeyFrame1e1[1].Ztor=0.0f;
+
+	KeyFrame1e1[2].Angt1=0.0f;
+	KeyFrame1e1[2].Angt2=0.0f;
+	KeyFrame1e1[2].Angc1=0.0f;
+	KeyFrame1e1[2].Angc2=0.0f;
+	KeyFrame1e1[2].Angbi1=-50.0f;
+	KeyFrame1e1[2].Angbi2=0.0f;
+	KeyFrame1e1[2].Angbib=0.0f;
+	KeyFrame1e1[2].Angbd1=60.0f;
+	KeyFrame1e1[2].Angbd2=0.0f;
+	KeyFrame1e1[2].Angbdb=0.0f;
+	KeyFrame1e1[2].Angpizq=40.0f;
+	KeyFrame1e1[2].Angpder=-40.0f;
+	KeyFrame1e1[2].Angpi=0.0f;
+	KeyFrame1e1[2].Angpd=0.0f;
+	KeyFrame1e1[2].Xtor=0.0f;
+	KeyFrame1e1[2].Ytor=0.0f;
+	KeyFrame1e1[2].Ztor=0.0f;
+
+	//enemigo 2
+	//Secuencia 1 (caminar)
+	KeyFrame1e2[0].Angt1=25.0f;
+	KeyFrame1e2[0].Angt2=10.0f;
+	KeyFrame1e2[0].Angc1=-70.0f;
+	KeyFrame1e2[0].Angc2=40.0f;
+	KeyFrame1e2[0].Angbi1=-90.0f;
+	KeyFrame1e2[0].Angbi2=110.0f;
+	KeyFrame1e2[0].Angbib=0.0f;
+	KeyFrame1e2[0].Angbd1=-80.0f;
+	KeyFrame1e2[0].Angbd2=-80.0f;
+	KeyFrame1e2[0].Angbdb=0.0f;
+	KeyFrame1e2[0].Angpizq=0.0f;
+	KeyFrame1e2[0].Angpder=-50.0f;
+	KeyFrame1e2[0].Angpi=0.0f;
+	KeyFrame1e2[0].Angpd=0.0f;
+	KeyFrame1e2[0].Xtor=0.0f;
+	KeyFrame1e2[0].Ytor=0.2f;
+	KeyFrame1e2[0].Ztor=0.0f;
+
+	KeyFrame1e2[1].Angt1=20.0f;
+	KeyFrame1e2[1].Angt2=-10.0f;
+	KeyFrame1e2[1].Angc1=-80.0f;
+	KeyFrame1e2[1].Angc2=30.0f;
+	KeyFrame1e2[1].Angbi1=-80.0f;
+	KeyFrame1e2[1].Angbi2=80.0f;
+	KeyFrame1e2[1].Angbib=0.0f;
+	KeyFrame1e2[1].Angbd1=-90.0f;
+	KeyFrame1e2[1].Angbd2=-110.0f;
+	KeyFrame1e2[1].Angbdb=0.0f;
+	KeyFrame1e2[1].Angpizq=-50.0f;
+	KeyFrame1e2[1].Angpder=0.0f;
+	KeyFrame1e2[1].Angpi=0.0f;
+	KeyFrame1e2[1].Angpd=0.0f;
+	KeyFrame1e2[1].Xtor=0.0f;
+	KeyFrame1e2[1].Ytor=0.0f;
+	KeyFrame1e2[1].Ztor=0.0f;
+
+	KeyFrame1e2[2].Angt1=25.0f;
+	KeyFrame1e2[2].Angt2=10.0f;
+	KeyFrame1e2[2].Angc1=-70.0f;
+	KeyFrame1e2[2].Angc2=40.0f;
+	KeyFrame1e2[2].Angbi1=-90.0f;
+	KeyFrame1e2[2].Angbi2=110.0f;
+	KeyFrame1e2[2].Angbib=0.0f;
+	KeyFrame1e2[2].Angbd1=-80.0f;
+	KeyFrame1e2[2].Angbd2=-80.0f;
+	KeyFrame1e2[2].Angbdb=0.0f;
+	KeyFrame1e2[2].Angpizq=0.0f;
+	KeyFrame1e2[2].Angpder=-40.0f;
+	KeyFrame1e2[2].Angpi=0.0f;
+	KeyFrame1e2[2].Angpd=0.0f;
+	KeyFrame1e2[2].Xtor=0.0f;
+	KeyFrame1e2[2].Ytor=0.2f;
+	KeyFrame1e2[2].Ztor=0.0f;
+
+	//datos iniciales de la animacion del enemigo 1
+	enemigo1modelo.Angt1   = KeyFrame1e1[0].Angt1;
+	enemigo1modelo.Angt2   = KeyFrame1e1[0].Angt2;
+	enemigo1modelo.Angc1   = KeyFrame1e1[0].Angc1;
+	enemigo1modelo.Angc2   = KeyFrame1e1[0].Angc2;
+	enemigo1modelo.Angbi1  = KeyFrame1e1[0].Angbi1;
+	enemigo1modelo.Angbi2  = KeyFrame1e1[0].Angbi2;
+	enemigo1modelo.Angbd1  = KeyFrame1e1[0].Angbd1;
+	enemigo1modelo.Angbd2  = KeyFrame1e1[0].Angbd2;
+	enemigo1modelo.Angpizq = KeyFrame1e1[0].Angpizq;
+	enemigo1modelo.Angpder = KeyFrame1e1[0].Angpder;
+	enemigo1modelo.Angpi   = KeyFrame1e1[0].Angpi;
+	enemigo1modelo.Angpd   = KeyFrame1e1[0].Angpd;
+	enemigo1modelo.Xtor    = KeyFrame1e1[0].Xtor;
+	enemigo1modelo.Ytor    = KeyFrame1e1[0].Ytor;
+	enemigo1modelo.Ztor    = KeyFrame1e1[0].Ztor;
+
+	//datos iniciales de la animacion del enemigo 2
+	enemigo2modelo.Angt1   = KeyFrame1e2[0].Angt1;
+	enemigo2modelo.Angt2   = KeyFrame1e2[0].Angt2;
+	enemigo2modelo.Angc1   = KeyFrame1e2[0].Angc1;
+	enemigo2modelo.Angc2   = KeyFrame1e2[0].Angc2;
+	enemigo2modelo.Angbi1  = KeyFrame1e2[0].Angbi1;
+	enemigo2modelo.Angbi2  = KeyFrame1e2[0].Angbi2;
+	enemigo2modelo.Angbd1  = KeyFrame1e2[0].Angbd1;
+	enemigo2modelo.Angbd2  = KeyFrame1e2[0].Angbd2;
+	enemigo2modelo.Angpizq = KeyFrame1e2[0].Angpizq;
+	enemigo2modelo.Angpder = KeyFrame1e2[0].Angpder;
+	enemigo2modelo.Angpi   = KeyFrame1e2[0].Angpi;
+	enemigo2modelo.Angpd   = KeyFrame1e2[0].Angpd;
+	enemigo2modelo.Xtor    = KeyFrame1e2[0].Xtor;
+	enemigo2modelo.Ytor    = KeyFrame1e2[0].Ytor;
+	enemigo2modelo.Ztor    = KeyFrame1e2[0].Ztor;
+
+}
+
+void inicializaDatosJugador()
+{
+	//Posición, ángulo, dirección y velocidad del personaje
+	player1.PosicionObj=CVector(5.0f, 0.0f, 0.0f);
+	player1.AngObj=90.0f; //Ángulo de rotación del modelo para que el personaje vea hacia la dérecha
+	player1.VelocidadObj=0.5f;
+
+	//Escala del personaje
+	player1.escalaX=1.0f;
+	player1.escalaY=1.0f;
+	player1.escalaZ=1.0f;
+
+	//Estado del personaje
+	player1.visible=true;
+	player1.caminando=false;
+	player1.saltando=false;
+	player1.golpeando=false;
+
+	//Posición de la cámara
+	player1.PosicionCam.x=player1.PosicionObj.x;
+	player1.PosicionCam.y=player1.PosicionObj.y+62.0f;
+	player1.PosicionCam.z=player1.PosicionObj.z+48.0f;
+
+	//Objetivo de la cámara
+	player1.ObjetivoCam=player1.PosicionObj;
+	player1.ObjetivoCam.y=player1.PosicionObj.y+4.0f;
+
+	player1.PosicionObjAnt=player1.PosicionObj;
+
+}
+
+void iniEnemigo(int iD)
+{
+	if(iD == 1)//enemigo 1
+	{
+		enemigo1.PosicionObj=CVector(380.0f,0.0f,100.0f);
+		enemigo1.Direccion=CVector(-1.0f,0.0f,0.0f);
+		enemigo1.VelocidadObj=0.2f;
+		enemigo1.AngObj=-90.0f;
+		
+		enemigo1.escalaX=1.5f;
+		enemigo1.escalaY=1.5f;
+		enemigo1.escalaZ=1.5f;
+		enemigo1.visible=true;
+		
+		enemigoDat[0].estadoEnemigo=1;	//caminando
+		enemigoDat[0].secCaminoE=0;		//primera sección del recorrido del enemigo
+
+		esfEnemigo[0].estado=1;
+		esfEnemigo[0].radio=4.0f;
+		esfEnemigo[0].pos=enemigo1.PosicionObj;
+	}
+	else if(iD == 2)//enemigo 2
+	{
+		enemigo2.PosicionObj=CVector(210.0f, 0.0f, -90.0f);
+		enemigo2.Direccion=CVector(-1.0f,0.0f,0.0f);
+		enemigo2.VelocidadObj=0.1f;
+		enemigo2.AngObj=-90.0f;
+				
+		enemigo2.escalaX=1.0f;
+		enemigo2.escalaY=1.0f;
+		enemigo2.escalaZ=1.0f;
+		enemigo2.visible=true;
+		
+		enemigoDat[1].estadoEnemigo=1;	//caminando
+		enemigoDat[1].secCaminoE=0;		//primera sección del recorrido del enemigo
+
+		esfEnemigo[1].estado=1;
+		esfEnemigo[1].radio=3.0f;
+		esfEnemigo[1].pos=enemigo2.PosicionObj;
+	}
+	else if(iD == 3)//enemigo 3
+	{
+		enemigo3.PosicionObj=CVector(120.0f, 0.0f, -15.0f);
+		enemigo3.Direccion=CVector(-1.0f,0.0f,0.0f);
+		enemigo3.VelocidadObj=0.1f;
+		enemigo3.AngObj=-90.0f;
+				
+		enemigo3.escalaX=1.0f;
+		enemigo3.escalaY=1.0f;
+		enemigo3.escalaZ=1.0f;
+		enemigo3.visible=true;
+		
+		enemigoDat[2].estadoEnemigo=1;	//caminando
+		enemigoDat[2].secCaminoE=0;		//primera sección del recorrido del enemigo
+
+		esfEnemigo[2].estado=1;
+		esfEnemigo[2].radio=3.0f;
+		esfEnemigo[2].pos=enemigo3.PosicionObj;
+	}
+}
+
+void inicializaPlanosCol()
+{
+	planoCol[0].xMin=4.0f;
+	planoCol[0].xMax=164.0f;
+	planoCol[0].zMin=-100.0f;
+	planoCol[0].zMax=100.0f;
+	planoCol[0].estado=1;
+
+	planoCol[1].xMin=164.0f;
+	planoCol[1].xMax=196.0f;
+	planoCol[1].zMin=-116.0f;
+	planoCol[1].zMax=96.0f;
+	planoCol[1].estado=1;
+
+	planoCol[2].xMin=196.0f;
+	planoCol[2].xMax=246.0f;
+	planoCol[2].zMin=-116.0f;
+	planoCol[2].zMax=-84.0f;
+	planoCol[2].estado=1;
+
+	planoCol[3].xMin=196.0f;
+	planoCol[3].xMax=207.0f;
+	planoCol[3].zMin=84.0f;
+	planoCol[3].zMax=96.0f;
+	planoCol[3].estado=0;
+
+	planoCol[4].xMin=207.0f;
+	planoCol[4].xMax=396.0f;
+	planoCol[4].zMin=84.0f;
+	planoCol[4].zMax=116.0f;
+	planoCol[4].estado=0;
+
+}
+
+void iniciaEsferasCol()
+{
+	esfPersonaje.estado=1;
+	esfPersonaje.radio=2.5f;
+	esfPersonaje.pos=player1.PosicionObj;
+
+	esfBote[0].estado=1;
+	esfBote[0].radio=3.0f;
+	esfBote[0].pos=CVector(146.0f, 0.0f, -17.0f);
+
+	esfBote[1].estado=1;
+	esfBote[1].radio=3.0f;
+	esfBote[1].pos=CVector(163.0f, 0.0f, -117.0f);
+	
+	esfBote[2].estado=1;
+	esfBote[2].radio=3.0f;
+	esfBote[2].pos=CVector(240.0f, 0.0f, -117.0f);
+	
+	esfBote[3].estado=1;
+	esfBote[3].radio=3.0f;
+	esfBote[3].pos=CVector(163.0f, 0.0f, 36.0f);
+	
+	esfBote[4].estado=1;
+	esfBote[4].radio=3.0f;
+	esfBote[4].pos=CVector(163.0f, 0.0f, 44.0f);
+	
+	esfBote[5].estado=1;
+	esfBote[5].radio=3.0f;
+	esfBote[5].pos=CVector(197.0f, 0.0f, 70.0f);
+	
+	esfBote[6].estado=1;
+	esfBote[6].radio=3.0f;
+	esfBote[6].pos=CVector(230.0f, 0.0f, 83.0f);
+	
+}
+
+int IniGL(GLvoid)										// Aqui se configuran los parametros iniciales de OpenGL
+{
+	glShadeModel(GL_SMOOTH);							// Activa Smooth Shading
+	glClearColor(0.0f, 0.0f, 0.0f, 0.5f);				// Fondo negro
+	glClearDepth(1.0f);									// Valor para el Depth Buffer
+	glEnable(GL_DEPTH_TEST);							// Activa Depth Testing
+	glDepthFunc(GL_LEQUAL);								// Tipo de Depth Testing a usar
+	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);	// Correccion de cálculos de perspectiva
+
+	glCullFace(GL_BACK);								// Configurado para eliminar caras traseras
+	glEnable(GL_CULL_FACE);								// Activa eliminacion de caras ocultas
+
+	glLightfv(GL_LIGHT0, GL_POSITION, LightPos);		// Posicion de la luz0
+	glLightfv(GL_LIGHT0, GL_AMBIENT,  LightAmb);		// Componente ambiente
+	glLightfv(GL_LIGHT0, GL_DIFFUSE,  LightDif);		// Componente difusa
+	glLightfv(GL_LIGHT0, GL_SPECULAR, LightSpc);		// Componente especular
+
+	glEnable(GL_LIGHT0);								// Activa luz0
+    glEnable(GL_LIGHTING);								// Habilita la iluminación
+
+	e=gluNewQuadric();
+
+	InicializaAnim();
+	DatosAnimacion();
+	cargaTexturas();
+	CargaModelos();
+
+	inicializaDatosJugador();
+	inicializaPlanosCol();
+	iniciaEsferasCol();
+
+	iniEnemigo(1);
+	iniEnemigo(2);
+	iniEnemigo(3);
+
+	angCamion=-20.0f;
+	despCamion=0.0f;
+	angLlantasCamion=0.0f;
+	estadoCamion=0;
+
+	angReja=0.0f;
+	estadoReja=0;
+
+	return TRUE;										
+}
+
+void animacion(jerarquiaModelo *varsMod, FRAME *KeyFrame, int maxKF , int frames, varsAnim *anim)
+{
+	if(anim->play)
+	{		
+		if((fabs(KeyFrame[anim->playIndex+1].Angt1-varsMod->Angt1))<0.1f &&
+		   (fabs(KeyFrame[anim->playIndex+1].Angt2-varsMod->Angt2))<0.1f &&
+		   (fabs(KeyFrame[anim->playIndex+1].Angc1-varsMod->Angc1))<0.1f &&
+		   (fabs(KeyFrame[anim->playIndex+1].Angc2-varsMod->Angc2))<0.1f &&
+		   (fabs(KeyFrame[anim->playIndex+1].Angbi1-varsMod->Angbi1))<0.1f &&
+		   (fabs(KeyFrame[anim->playIndex+1].Angbi2-varsMod->Angbi2))<0.1f &&
+		   (fabs(KeyFrame[anim->playIndex+1].Angbd1-varsMod->Angbd1))<0.1f &&
+		   (fabs(KeyFrame[anim->playIndex+1].Angbd2-varsMod->Angbd2))<0.1f &&
+		   (fabs(KeyFrame[anim->playIndex+1].Angpizq-varsMod->Angpizq))<0.1f &&
+		   (fabs(KeyFrame[anim->playIndex+1].Angpder-varsMod->Angpder))<0.1f &&
+		   (fabs(KeyFrame[anim->playIndex+1].Angpi-varsMod->Angpi))<0.1f &&
+		   (fabs(KeyFrame[anim->playIndex+1].Angpd-varsMod->Angpd))<0.1f &&
+		   (fabs(KeyFrame[anim->playIndex+1].Xtor-varsMod->Xtor))<0.1f &&
+		   (fabs(KeyFrame[anim->playIndex+1].Ytor-varsMod->Ytor))<0.1f &&
+		   (fabs(KeyFrame[anim->playIndex+1].Ztor-varsMod->Ztor))<0.1f)
+		{			
+			anim->playIndex++;			
+			if(anim->playIndex > maxKF-2)
+			{
+				anim->playIndex=0;
+				anim->play=false;
+				anim->tipoAnim=0;
+			}
+		}
+		else
+		{
+			KeyFrame[anim->playIndex].incAngt1   = (KeyFrame[anim->playIndex+1].Angt1-KeyFrame[anim->playIndex].Angt1)/frames;
+			KeyFrame[anim->playIndex].incAngt2   = (KeyFrame[anim->playIndex+1].Angt2-KeyFrame[anim->playIndex].Angt2)/frames;
+			KeyFrame[anim->playIndex].incAngc1   = (KeyFrame[anim->playIndex+1].Angc1-KeyFrame[anim->playIndex].Angc1)/frames;
+			KeyFrame[anim->playIndex].incAngc2   = (KeyFrame[anim->playIndex+1].Angc2-KeyFrame[anim->playIndex].Angc2)/frames;
+			KeyFrame[anim->playIndex].incAngbi1  = (KeyFrame[anim->playIndex+1].Angbi1-KeyFrame[anim->playIndex].Angbi1)/frames;
+			KeyFrame[anim->playIndex].incAngbi2  = (KeyFrame[anim->playIndex+1].Angbi2-KeyFrame[anim->playIndex].Angbi2)/frames;
+			KeyFrame[anim->playIndex].incAngbd1  = (KeyFrame[anim->playIndex+1].Angbd1-KeyFrame[anim->playIndex].Angbd1)/frames;
+			KeyFrame[anim->playIndex].incAngbd2  = (KeyFrame[anim->playIndex+1].Angbd2-KeyFrame[anim->playIndex].Angbd2)/frames;
+			KeyFrame[anim->playIndex].incAngpizq = (KeyFrame[anim->playIndex+1].Angpizq-KeyFrame[anim->playIndex].Angpizq)/frames;
+			KeyFrame[anim->playIndex].incAngpder = (KeyFrame[anim->playIndex+1].Angpder-KeyFrame[anim->playIndex].Angpder)/frames;
+			KeyFrame[anim->playIndex].incAngpi   = (KeyFrame[anim->playIndex+1].Angpi-KeyFrame[anim->playIndex].Angpi)/frames;
+			KeyFrame[anim->playIndex].incAngpd   = (KeyFrame[anim->playIndex+1].Angpd-KeyFrame[anim->playIndex].Angpd)/frames;
+			KeyFrame[anim->playIndex].incXtor    = (KeyFrame[anim->playIndex+1].Xtor-KeyFrame[anim->playIndex].Xtor)/frames;
+			KeyFrame[anim->playIndex].incYtor    = (KeyFrame[anim->playIndex+1].Ytor-KeyFrame[anim->playIndex].Ytor)/frames;
+			KeyFrame[anim->playIndex].incZtor    = (KeyFrame[anim->playIndex+1].Ztor-KeyFrame[anim->playIndex].Ztor)/frames;
+		
+			varsMod->Angt1   += KeyFrame[anim->playIndex].incAngt1;
+			varsMod->Angt2   += KeyFrame[anim->playIndex].incAngt2;
+			varsMod->Angc1   += KeyFrame[anim->playIndex].incAngc1;
+			varsMod->Angc2   += KeyFrame[anim->playIndex].incAngc2;
+			varsMod->Angbi1  += KeyFrame[anim->playIndex].incAngbi1;
+			varsMod->Angbi2  += KeyFrame[anim->playIndex].incAngbi2;
+			varsMod->Angbd1  += KeyFrame[anim->playIndex].incAngbd1;
+			varsMod->Angbd2  += KeyFrame[anim->playIndex].incAngbd2;
+			varsMod->Angpizq += KeyFrame[anim->playIndex].incAngpizq;
+			varsMod->Angpder += KeyFrame[anim->playIndex].incAngpder;
+			varsMod->Angpi   += KeyFrame[anim->playIndex].incAngpi;
+			varsMod->Angpd   += KeyFrame[anim->playIndex].incAngpd;
+			varsMod->Xtor    += KeyFrame[anim->playIndex].incXtor;
+			varsMod->Ytor    += KeyFrame[anim->playIndex].incYtor;
+			varsMod->Ztor    += KeyFrame[anim->playIndex].incZtor;
+		
+		}
+	}
+}
+
+bool colisionPlanoPersonaje(CVector pos)
+{
+	bool col=false;
+
+	for(int i=0; i<5; i++)
+	{
+		if(pos.x >= planoCol[i].xMin && pos.x <= planoCol[i].xMax
+			&& pos.z >= planoCol[i].zMin && pos.z <= planoCol[i].zMax)
+		{
+			if(planoCol[i].estado == 1)
+			{
+				col=true;
+				break;
+			}
+		}
+	}
+
+	return col;
+}
+
+bool colisionconBotes(int dir) //Para que no atraviese los botes
+{
+	bool col=false;
+	CVector pSig;
+
+	for(int i=0; i<7; i++)
+	{
+		if(esfBote[i].estado == 1)
+		{
+			if(dir == 1)
+			{
+				pSig.x=player1.PosicionObj.x+player1.VelocidadObj;
+				pSig.y=0.0f;
+				pSig.z=player1.PosicionObj.z;
+			}
+			else if(dir == 2)
+			{
+				pSig.x=player1.PosicionObj.x-player1.VelocidadObj;
+				pSig.y=0.0f;
+				pSig.z=player1.PosicionObj.z;
+			}
+			else if(dir == 3)
+			{
+				pSig.x=player1.PosicionObj.x;
+				pSig.y=0.0f;
+				pSig.z=player1.PosicionObj.z+player1.VelocidadObj;
+			}
+			else if(dir == 4)
+			{
+				pSig.x=player1.PosicionObj.x;
+				pSig.y=0.0f;
+				pSig.z=player1.PosicionObj.z-player1.VelocidadObj;
+			}
+
+			esfPersonaje.pos=pSig;
+
+			float dist=Magnitud(esfPersonaje.pos-esfBote[i].pos);
+			if(dist < (esfPersonaje.radio+esfBote[i].radio))
+			{
+				col=true;
+				break;
+			}
+		}
+	}
+
+	return col;
+}
+
+bool colisionconEnemigo(int dir) //Para que no atraviese los botes
+{
+	bool col=false;
+	CVector pSig;
+
+	for(int i=0; i<3; i++)
+	{
+		//esfEnemigo[i].estado=1;
+		if(dir == 1)
+		{
+			pSig.x=player1.PosicionObj.x+player1.VelocidadObj;
+			pSig.y=0.0f;
+			pSig.z=player1.PosicionObj.z;
+		}
+		else if(dir == 2)
+		{
+			pSig.x=player1.PosicionObj.x-player1.VelocidadObj;
+			pSig.y=0.0f;
+			pSig.z=player1.PosicionObj.z;
+		}
+		else if(dir == 3)
+		{
+			pSig.x=player1.PosicionObj.x;
+			pSig.y=0.0f;
+			pSig.z=player1.PosicionObj.z+player1.VelocidadObj;
+		}
+		else if(dir == 4)
+		{
+			pSig.x=player1.PosicionObj.x;
+			pSig.y=0.0f;
+			pSig.z=player1.PosicionObj.z-player1.VelocidadObj;
+		}
+
+		esfPersonaje.pos=pSig;
+
+		float dist=Magnitud(esfPersonaje.pos-esfEnemigo[i].pos);
+		if(dist < (esfPersonaje.radio+esfEnemigo[i].radio))
+		{
+			col=true;
+			esfEnemigo[i].estado=0;
+			break;
+		}
+	}
+
+	return col;
+}
+
+bool colisionEnemigoPersonaje(int id) //Para que no atraviese los botes
+{
+	bool col=false;
+	CVector pSig;
+	CVector pos;
+	CVector dir;
+	float vel;
+	
+	if(id == 0)
+	{
+		pos=enemigo1.PosicionObj;
+		dir=enemigo1.Direccion;
+		vel=enemigo1.VelocidadObj;
+	}
+	else if(id == 1)
+	{
+		pos=enemigo2.PosicionObj;
+		dir=enemigo2.Direccion;
+		vel=enemigo2.VelocidadObj;
+	}
+	else if(id == 2)
+	{
+		pos=enemigo3.PosicionObj;
+		dir=enemigo3.Direccion;
+		vel=enemigo3.VelocidadObj;
+	}
+
+	pSig=pos+dir*vel;
+
+	esfEnemigo[id].pos=pSig;
+
+	float dist=Magnitud(esfPersonaje.pos-esfEnemigo[id].pos);
+	if(dist < (esfPersonaje.radio+esfEnemigo[id].radio))
+	{
+		col=true;
+		esfEnemigo[id].estado=0;
+	}
+	else
+		esfEnemigo[id].estado=1;
+
+	return col;
+}
+
+void distEnemigoPersonaje(int id)
+{
+	float dist;
+	float ang;
+
+	CVector pos;
+		
+	if(id == 0)
+		pos=enemigo1.PosicionObj;
+	else if(id == 1)
+		pos=enemigo2.PosicionObj;
+	else if(id == 2)
+		pos=enemigo3.PosicionObj;
+	
+	dist=Magnitud(pos-player1.PosicionObj);
+	if(dist <= 20.0f)
+	{
+		//Cálculo del ángulo para que gire hacia el jugador
+		CVector N=CVector(0.0f, 0.0f, 1.0f); //Orientación original del objeto
+		CVector ObjCamVec=player1.PosicionObj-pos;
+
+		ObjCamVec.y=0.0f;
+		ObjCamVec=Normaliza(ObjCamVec);
+
+		CVector eje=Cruz(N, ObjCamVec);
+		float angcos=Punto(N, ObjCamVec);
+		ang=(float)acos(angcos)*180.0f/PI;
+
+		if(id == 0)
+		{
+			enemigo1.AngObj=ang;
+			enemigo1.VelocidadObj=0.0f;
+			ejeRotEnemigo1=eje;
+		}
+		else if(id == 1)
+		{
+			enemigo2.AngObj=ang;
+			enemigo2.VelocidadObj=0.0f;
+			ejeRotEnemigo2=eje;
+		}
+		else if(id == 2)
+		{
+			enemigo3.AngObj=ang;
+			enemigo3.VelocidadObj=0.0f;
+			ejeRotEnemigo3=eje;
+		}
+	}
+	else
+	{
+		if(id == 0)
+		{
+			enemigo1.VelocidadObj=0.2f;
+			ejeRotEnemigo1=CVector(0.0f, 1.0f, 0.0f);
+		}
+		else if(id == 1)
+		{
+			enemigo2.VelocidadObj=0.1f;
+			ejeRotEnemigo2=CVector(0.0f, 1.0f, 0.0f);
+		}
+		else if(id == 2)
+		{
+			enemigo3.VelocidadObj=0.1f;
+			ejeRotEnemigo3=CVector(0.0f, 1.0f, 0.0f);
+		}
+	}
+	
+}
+
+void colisionBotePersonaje() //Colision con el bote que se puede destruir
+{
+	float dist;
+
+	dist=Magnitud(player1.PosicionObj-CVector(230.0f, 0.0f, 83.0f));
+	if(dist <= 8.0f)
+	{
+		if(estadoBote == 0)
+		{
+			esfBote[6].estado=0;
+			estadoBote=1;
+		}
+	}
+}
+
+void colisionTablaPersonaje()
+{
+	float dist;
+
+	dist=Magnitud(player1.PosicionObj-CVector(230.0f, 0.0f, 85.0f));
+	if(dist <= 2.0f)
+	{
+		if(estadoHoverBoard == 1)
+		{
+			vel=1.25f;
+			esfPersonaje.radio=3.8f;
+			estadoHoverBoard=2;
+		}
+	}
+}
+
+void colisionCamionPersonaje()
+{
+	float dist;
+
+	dist=Magnitud(player1.PosicionObj-CVector(190.0f, 0.0f, 110.0f));
+	if(dist <= 16.0f && player1.AngObj == 0.0f)
+	{
+		if(estadoCamion == 0)
+			estadoCamion=1;
+	}
+}
+
+void controlPersonaje(int funcion)
+{
+	CVector posSig;
+	bool col;
+	int contTeclas=0;
+	static int teclaAnt=0;
+	
+	if((teclaRt == 1 && teclaUp == 1) || (teclaRt == 1 && teclaDn == 1)
+		|| (teclaLt == 1 && teclaUp == 1) || (teclaLt == 1 && teclaDn == 1))
+		player1.VelocidadObj=vel*0.75f;
+	else
+		player1.VelocidadObj=vel;
+
+	if(teclaRt == 1)
+		contTeclas++;
+	if(teclaLt == 1)
+		contTeclas++;
+	if(teclaUp == 1)
+		contTeclas++;
+	if(teclaDn == 1)
+		contTeclas++;
+
+	if(funcion == 1) //Avanza hacia x positivo
+	{
+		posSig.x=player1.PosicionObj.x+player1.VelocidadObj;
+		posSig.z=player1.PosicionObj.z;
+		if(colisionPlanoPersonaje(posSig))
+		{
+			if(!colisionconBotes(1) && !colisionconEnemigo(1))
+				player1.PosicionObj.x+=player1.VelocidadObj;
+		}
+
+		if(contTeclas == 1)
+		{
+			if(teclaAnt == 1 || teclaAnt == 5 || teclaAnt == 6) //der, der-arriba o der-abajo
+			{
+				if(player1.AngObj > 90.0f)
+					player1.AngObj-=3.0f;
+				else if(player1.AngObj < 90.0f)
+					player1.AngObj+=3.0f;
+			}
+			else
+				player1.AngObj=90.0f;
+
+			angHoverBoard=0.0f;
+			sonidoHoverBoard=0;
+		}
+	}
+	else if(funcion == 2) //Avanza hacia x negativo
+	{
+		posSig.x=player1.PosicionObj.x-player1.VelocidadObj;
+		posSig.z=player1.PosicionObj.z;
+		if(colisionPlanoPersonaje(posSig))
+		{
+			if(!colisionconBotes(2) && !colisionconEnemigo(2))
+				player1.PosicionObj.x-=player1.VelocidadObj;
+		}
+
+		if(contTeclas == 1)
+		{
+			if(teclaAnt == 2 || teclaAnt == 7 || teclaAnt == 8) //izq, izq-arriba o izq-abajo
+			{
+				if(player1.AngObj < 0.0f)
+				{
+					if(player1.AngObj > -90.0f)
+						player1.AngObj-=3.0f;
+					else if(player1.AngObj < -90.0f)
+						player1.AngObj+=3.0f;
+				}
+				else if(player1.AngObj == 180.0f)
+					player1.AngObj=-180.0f;
+			}
+			else
+				player1.AngObj=-90.0f;
+
+			angHoverBoard=0.0f;
+			sonidoHoverBoard=0;
+		}
+	}
+	else if(funcion == 3) //Avanza hacia z positivo
+	{
+		posSig.x=player1.PosicionObj.x;
+		posSig.z=player1.PosicionObj.z+player1.VelocidadObj;
+		if(colisionPlanoPersonaje(posSig))
+			if(!colisionconBotes(3) && !colisionconEnemigo(3))
+				player1.PosicionObj.z+=player1.VelocidadObj;
+
+		if(contTeclas == 1)
+		{
+			if(teclaAnt == 4 || teclaAnt == 6 || teclaAnt == 8) //abajo, der-abajo o izq-abajo
+			{
+				if(player1.AngObj > 0.0f)
+					player1.AngObj-=3.0f;
+				else if(player1.AngObj < 0.0f)
+					player1.AngObj+=3.0f;
+			}
+			else
+				player1.AngObj=0.0f;
+
+			angHoverBoard=0.0f;
+			sonidoHoverBoard=0;
+		}
+	}
+	else if(funcion == 4) //Avanza hacia z negativo
+	{
+		posSig.x=player1.PosicionObj.x;
+		posSig.z=player1.PosicionObj.z-player1.VelocidadObj;
+		if(colisionPlanoPersonaje(posSig))
+			if(!colisionconBotes(4) && !colisionconEnemigo(4))
+				player1.PosicionObj.z-=player1.VelocidadObj;
+
+		if(contTeclas == 1)
+		{
+			if(teclaAnt == 3 || teclaAnt == 5 || teclaAnt == 7) //arriba, der-arriba o izq-arriba
+			{
+				if(player1.AngObj < 180.0f && player1.AngObj > 0.0f)
+					player1.AngObj+=3.0f;
+				else if(player1.AngObj < 180.0f && player1.AngObj < 0.0f)
+				{
+					if(player1.AngObj > -180.0f)
+						player1.AngObj-=3.0f;
+					else
+						player1.AngObj=180.0f;
+				}
+			}
+			else
+				player1.AngObj=180.0f;
+
+			angHoverBoard=0.0f;
+			sonidoHoverBoard=0;
+		}
+	}
+
+	//Se actualiza la cámara
+
+	//Posición de la cámara
+	player1.PosicionCam.x=player1.PosicionObj.x;
+	player1.PosicionCam.y=player1.PosicionObj.y+62.0f;
+	player1.PosicionCam.z=player1.PosicionObj.z+48.0f;
+
+	//Objetivo de la cámara
+	player1.ObjetivoCam=player1.PosicionObj;
+	player1.ObjetivoCam.y=player1.PosicionObj.y+4.0f;
+
+	player1.PosicionObjAnt=player1.PosicionObj;
+
+	if(teclaRt == 1 && teclaUp == 1)
+	{
+		if(teclaAnt == 1 || teclaAnt == 3 || teclaAnt == 5) //der, arriba o der-arriba
+		{
+			if(teclaAnt == 3)
+				player1.AngObj=180.0f;
+
+			if(player1.AngObj < 135.0f)
+				player1.AngObj+=3.0f;
+			else if(player1.AngObj > 135.0f)
+				player1.AngObj-=3.0f;
+		}
+		else
+			player1.AngObj=135.0f;
+
+		angHoverBoard=-10.0f;
+	}
+	else if(teclaRt == 1 && teclaDn == 1)
+	{
+		if(teclaAnt == 1 || teclaAnt == 4 || teclaAnt == 6) //der, abajo o der-abajo
+		{
+			if(player1.AngObj > 45.0f)
+				player1.AngObj-=3.0f;
+			else if(player1.AngObj < 45.0f)
+				player1.AngObj+=3.0f;
+		}
+		else
+			player1.AngObj=45.0f;
+
+		angHoverBoard=10.0f;
+	}
+	else if(teclaLt == 1 && teclaUp == 1)
+	{
+		if(teclaAnt == 2 || teclaAnt == 3 || teclaAnt == 7) //izq, arriba o izq-arriba
+		{
+			if(teclaAnt == 3)
+				player1.AngObj=-180.0f;
+
+			if(player1.AngObj > -135.0f)
+				player1.AngObj-=3.0f;
+			else if(player1.AngObj < -135.0f)
+				player1.AngObj+=3.0f;
+		}
+		else
+			player1.AngObj=-135.0f;
+
+		angHoverBoard=-10.0f;
+	}
+	else if(teclaLt == 1 && teclaDn == 1)
+	{
+		if(teclaAnt == 2 || teclaAnt == 4 || teclaAnt == 8) //izq, abajo o izq-abajo
+		{
+			if(player1.AngObj < -45.0f)
+				player1.AngObj+=3.0f;
+			else if(player1.AngObj > -45.0f)
+				player1.AngObj-=3.0f;
+		}
+		else
+			player1.AngObj=-45.0f;
+
+		angHoverBoard=10.0f;
+	}
+	
+	if(teclaRt == 1 && teclaLt == 0 && teclaUp == 0 && teclaDn == 0)
+		teclaAnt=1; //der
+	else if(teclaRt == 0 && teclaLt == 1 && teclaUp == 0 && teclaDn == 0)
+		teclaAnt=2; //izq
+	else if(teclaRt == 0 && teclaLt == 0 && teclaUp == 1 && teclaDn == 0)
+		teclaAnt=3; //arriba
+	else if(teclaRt == 0 && teclaLt == 0 && teclaUp == 0 && teclaDn == 1)
+		teclaAnt=4; //abajo
+	else if(teclaRt == 1 && teclaLt == 0 && teclaUp == 1 && teclaDn == 0)
+		teclaAnt=5; //der, arriba
+	else if(teclaRt == 0 && teclaLt == 0 && teclaUp == 0 && teclaDn == 1)
+		teclaAnt=6; //der, abajo
+	else if(teclaRt == 0 && teclaLt == 1 && teclaUp == 1 && teclaDn == 0)
+		teclaAnt=7; //izq, arriba
+	else if(teclaRt == 0 && teclaLt == 1 && teclaUp == 0 && teclaDn == 1)
+		teclaAnt=8; //izq, abajo
+
+}
+
+void controlEnemigo(int enemigo)
+{
+	static float dist1=0.0f;
+	static float dist2=0.0f;
+	static float dist3=0.0f;
+
+	if(enemigo == 1)
+	{
+		if(enemigoDat[0].secCaminoE == 0)
+		{
+			enemigo1.Direccion=CVector(-1.0f,0.0f,0.0f);
+			enemigo1.AngObj=-90.0f;
+			if(dist1 >= 30.0f)
+			{
+				enemigoDat[0].secCaminoE=1;
+				dist1=0.0f;
+			}
+		}
+		else if(enemigoDat[0].secCaminoE == 1)
+		{
+			enemigo1.Direccion=CVector(0.0f,0.0f,-1.0f);
+			enemigo1.AngObj=180.0f;
+			if(dist1 >= 15.0f)
+			{
+				enemigoDat[0].secCaminoE=2;
+				dist1=0.0f;
+			}
+		}
+		else if(enemigoDat[0].secCaminoE == 2)
+		{
+			enemigo1.Direccion=CVector(-1.0f,0.0f,0.0f);
+			enemigo1.AngObj=-90.0f;
+			if(dist1 >= 100.0f)
+			{
+				enemigoDat[0].secCaminoE=3;
+				dist1=0.0f;
+			}
+		}
+		else if(enemigoDat[0].secCaminoE == 3)
+		{
+			enemigo1.Direccion=CVector(0.0f,0.0f,1.0f);
+			enemigo1.AngObj=0.0f;
+			if(dist1 >= 25.0f)
+			{
+				enemigoDat[0].secCaminoE=4;
+				dist1=0.0f;
+			}
+		}
+		else if(enemigoDat[0].secCaminoE == 4)
+		{
+			enemigo1.Direccion=CVector(1.0f,0.0f,0.0f);
+			enemigo1.AngObj=90.0f;
+			if(dist1 >= 80.0f)
+			{
+				enemigoDat[0].secCaminoE=5;
+				dist1=0.0f;
+			}
+		}
+		else if(enemigoDat[0].secCaminoE == 5)
+		{
+			enemigo1.Direccion=CVector(0.0f,0.0f,-1.0f);
+			enemigo1.AngObj=180.0f;
+			if(dist1 >= 10.0f)
+			{
+				enemigoDat[0].secCaminoE=6;
+				dist1=0.0f;
+			}
+		}
+		else if(enemigoDat[0].secCaminoE == 6)
+		{
+			enemigo1.Direccion=CVector(1.0f,0.0f,0.0f);
+			enemigo1.AngObj=90.0f;
+			if(dist1 >= 50.0f)
+			{
+				enemigoDat[0].secCaminoE=0;
+				dist1=0.0f;
+			}
+		}
+				
+		if(enemigoDat[0].estadoEnemigo == 1)
+		{
+			distEnemigoPersonaje(0);
+			colisionEnemigoPersonaje(0);
+
+			if(esfEnemigo[0].estado == 1)
+			{
+				dist1+=enemigo1.VelocidadObj;
+				enemigo1.PosicionObj=enemigo1.PosicionObj+enemigo1.Direccion*enemigo1.VelocidadObj;
+			}
+			esfEnemigo[0].pos=enemigo1.PosicionObj;
+		}
+	}
+	else if(enemigo == 2)
+	{
+		if(enemigoDat[1].secCaminoE == 0) //regreso al inicio
+		{
+			enemigo2.Direccion=CVector(-1.0f,0.0f,0.0f);
+			enemigo2.AngObj=-90.0f;
+			if(dist2 >= 30.0f)
+			{
+				enemigoDat[1].secCaminoE=1;
+				dist2=0.0f;
+			}
+		}
+		else if(enemigoDat[1].secCaminoE == 1)
+		{
+			enemigo2.Direccion=CVector(0.0f,0.0f,1.0f);
+			enemigo2.AngObj=0.0f;
+			if(dist2 >= 90.0f)
+			{
+				enemigoDat[1].secCaminoE=2;
+				dist2=0.0f;
+			}
+		}
+		else if(enemigoDat[1].secCaminoE == 2)
+		{
+			enemigo2.Direccion=CVector(-1.0f,0.0f,0.0f);
+			enemigo2.AngObj=-90.0f;
+			if(dist2 >= 130.0f)
+			{
+				enemigoDat[1].secCaminoE=3;
+				dist2=0.0f;
+			}
+		}
+		else if(enemigoDat[1].secCaminoE == 3)
+		{
+			enemigo2.Direccion=CVector(1.0f,0.0f,0.0f);
+			enemigo2.AngObj=90.0f;
+			if(dist2 >= 130.0f)
+			{
+				enemigoDat[1].secCaminoE=4;
+				dist2=0.0f;
+			}
+		}
+		else if(enemigoDat[1].secCaminoE == 4)
+		{
+			enemigo2.Direccion=CVector(0.0f,0.0f,1.0f);
+			enemigo2.AngObj=0.0f;
+			if(dist2 >= 50.0f)
+			{
+				enemigoDat[1].secCaminoE=5;
+				dist2=0.0f;
+			}
+		}
+		else if(enemigoDat[1].secCaminoE == 5)
+		{
+			enemigo2.Direccion=CVector(0.0f,0.0f,-1.0f);
+			enemigo2.AngObj=180.0f;
+			if(dist2 >= 140.0f)
+			{
+				enemigoDat[1].secCaminoE=6;
+				dist2=0.0f;
+			}
+		}
+		else if(enemigoDat[1].secCaminoE == 6)
+		{
+			enemigo2.Direccion=CVector(1.0f,0.0f,0.0f);
+			enemigo2.AngObj=90.0f;
+			if(dist2 >= 30.0f)
+			{
+				enemigoDat[1].secCaminoE=0;
+				dist2=0.0f;
+			}
+		}
+		
+		if(enemigoDat[1].estadoEnemigo == 1)
+		{
+			distEnemigoPersonaje(1);
+			colisionEnemigoPersonaje(1);
+
+			if(esfEnemigo[1].estado == 1)
+			{
+				dist2+=enemigo2.VelocidadObj;
+				enemigo2.PosicionObj=enemigo2.PosicionObj+enemigo2.Direccion*enemigo2.VelocidadObj;
+			}
+			esfEnemigo[1].pos=enemigo2.PosicionObj;
+		}
+	}
+	else if(enemigo == 3)
+	{
+		if(enemigoDat[2].secCaminoE == 0) //regreso al inicio
+		{
+			enemigo3.Direccion=CVector(-1.0f,0.0f,0.0f);
+			enemigo3.AngObj=-90.0f;
+			if(dist3 >= 100.0f)
+			{
+				enemigoDat[2].secCaminoE=1;
+				dist3=0.0f;
+			}
+		}
+		else if(enemigoDat[2].secCaminoE == 1)
+		{
+			enemigo3.Direccion=CVector(0.0f,0.0f,1.0f);
+			enemigo3.AngObj=0.0f;
+			if(dist3 >= 25.0f)
+			{
+				enemigoDat[2].secCaminoE=2;
+				dist3=0.0f;
+			}
+		}
+		else if(enemigoDat[2].secCaminoE == 2)
+		{
+			enemigo3.Direccion=CVector(1.0f,0.0f,0.0f);
+			enemigo3.AngObj=90.0f;
+			if(dist3 >= 100.0f)
+			{
+				enemigoDat[2].secCaminoE=3;
+				dist3=0.0f;
+			}
+		}
+		else if(enemigoDat[2].secCaminoE == 3)
+		{
+			enemigo3.Direccion=CVector(0.0f,0.0f,-1.0f);
+			enemigo3.AngObj=180.0f;
+			if(dist3 >= 25.0f)
+			{
+				enemigoDat[2].secCaminoE=0;
+				dist3=0.0f;
+			}
+		}
+				
+		if(enemigoDat[2].estadoEnemigo == 1)
+		{
+			distEnemigoPersonaje(2);
+			colisionEnemigoPersonaje(2);
+
+			if(esfEnemigo[2].estado == 1)
+			{
+				dist3+=enemigo3.VelocidadObj;
+				enemigo3.PosicionObj=enemigo3.PosicionObj+enemigo3.Direccion*enemigo3.VelocidadObj;
+			}
+			esfEnemigo[2].pos=enemigo3.PosicionObj;
+		}
+	}
+}
+
+void DibujaEjes()
+{
+	glDisable(GL_LIGHTING);
+
+	glBegin(GL_LINES);
+		//Eje X
+		glColor3f(1.0f,0.0f,0.0f);
+		glVertex3f(-100.0f, 0.0f, 0.0f);
+		glVertex3f( 100.0f, 0.0f, 0.0f);
+
+		//Eje Y
+		glColor3f(0.0f,1.0f,0.0f);
+		glVertex3f(0.0f, -100.0f, 0.0f);
+		glVertex3f(0.0f,  100.0f, 0.0f);
+
+		//Eje Z
+		glColor3f(0.0f,0.0f,1.0f);
+		glVertex3f(0.0f, 0.0f, -100.0f);
+		glVertex3f(0.0f, 0.0f,  100.0f);
+	glEnd();
+
+	glPointSize(10.0f);
+
+	glBegin(GL_POINTS);
+		//"Flecha" eje X
+		glColor3f(1.0f,0.0f,0.0f);
+		glVertex3f( 100.0f, 0.0f, 0.0f);
+
+		//"Flecha" eje Y
+		glColor3f(0.0f,1.0f,0.0f);
+		glVertex3f(0.0f,  100.0f, 0.0f);
+
+		//"Flecha" eje Z
+		glColor3f(0.0f,0.0f,1.0f);
+		glVertex3f(0.0f, 0.0f,  100.0f);
+	glEnd();
+
+	glPointSize(1.0f);
+
+	glColor3f(1.0f,1.0f,1.0f);
+
+	glEnable(GL_LIGHTING);
+}
+
+void dibujaEdif1()
+{
+
+
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, textura[0].texID);
+
+	//1
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+		glTexCoord2f(0.0f, 0.50f);  glVertex3f(0.0f, 0.0f, 0.0f);
+		glTexCoord2f(1.0f, 0.50f);  glVertex3f(10.0f, 0.0f, 0.0f);
+		glTexCoord2f(1.0f, 1.0f); glVertex3f(10.0f, 8.0f, 0.0f);
+		glTexCoord2f(0.0f, 1.0f); glVertex3f(0.0f, 8.0f, 0.0f);
+	glEnd();
+
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+		glTexCoord2f(0.50f, 0.0f);  glVertex3f(10.0f, 0.0f, 0.0f);
+		glTexCoord2f(1.0f, 0.0f);  glVertex3f(10.0f, 0.0f, -8.0f);
+		glTexCoord2f(1.0f, 0.50f); glVertex3f(10.0f, 8.0f, -8.0f);
+		glTexCoord2f(0.50f, 0.50f); glVertex3f(10.0f, 8.0f, 0.0f);
+	glEnd();
+
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+		glTexCoord2f(0.50f, 0.0f);  glVertex3f(10.0f, 0.0f, -8.0f);
+		glTexCoord2f(1.0f, 0.0f);  glVertex3f(0.0f, 0.0f, -8.0f);
+		glTexCoord2f(1.0f, 0.50f); glVertex3f(0.0f, 8.0f, -8.0f);
+		glTexCoord2f(0.50f, 0.50f); glVertex3f(10.0f, 8.0f, -8.0f);
+	glEnd();
+
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+	glTexCoord2f(0.50f, 0.0f);  glVertex3f(0.0f, 0.0f, -8.0f);
+	glTexCoord2f(1.0f, 0.0f);  glVertex3f(0.0f, 0.0f, 0.0f);
+	glTexCoord2f(1.0f, 0.50f); glVertex3f(0.0f, 8.0f, 0.0f);
+	glTexCoord2f(0.50f, 0.50f); glVertex3f(0.0f, 8.0f, -8.0f);
+	glEnd();
+
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+	glTexCoord2f(0.0f, 0.0f);  glVertex3f(0.0f, 8.0f, 0.0f);
+	glTexCoord2f(0.50f, 0.0f);  glVertex3f(10.0f, 8.0f, 0.0f);
+	glTexCoord2f(0.50f, 0.50f); glVertex3f(10.0f, 8.0f, -8.0f);
+	glTexCoord2f(0.0f, 0.50f); glVertex3f(0.0f, 8.0f, -8.0f);
+	glEnd();
+
+}
+
+void dibujaEdifDes1()
+{
+
+
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, textura[3].texID);
+
+
+
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+	glTexCoord2f(0.0f, 0.0f);  glVertex3f(0.0f, 0.1f, 0.0f);
+	glTexCoord2f(0.50f, 0.0f);  glVertex3f(10.0f, 0.1f, 0.0f);
+	glTexCoord2f(0.50f, 1.0f); glVertex3f(10.0f, 0.1f, -8.0f);
+	glTexCoord2f(0.0f, 1.0f); glVertex3f(0.0f, 0.1f, -8.0f);
+	glEnd();
+
+}
+
+void dibujaEdif2()
+{
+
+
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, textura[1].texID);
+
+	//1
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+		glTexCoord2f(0.15f, 0.50f);  glVertex3f(0.0f, 0.0f, 0.0f);
+		glTexCoord2f(1.0f, 0.50f);  glVertex3f(5.0f, 0.0f, 0.0f);
+		glTexCoord2f(1.0f, 1.0f); glVertex3f(5.0f, 8.0f, 0.0f);
+		glTexCoord2f(0.15f, 1.0f); glVertex3f(0.0f, 8.0f, 0.0f);
+	glEnd();
+
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+		glTexCoord2f(0.15f, 0.50f);  glVertex3f(5.0f, 0.0f, 0.0f);
+		glTexCoord2f(1.0f, 0.50f);  glVertex3f(5.0f, 0.0f, -8.0f);
+		glTexCoord2f(1.0f, 1.0f); glVertex3f(5.0f, 8.0f, -8.0f);
+		glTexCoord2f(0.15f, 1.0f); glVertex3f(5.0f, 8.0f, 0.0f);
+	glEnd();
+
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+		glTexCoord2f(0.15f, 0.50f);  glVertex3f(5.0f, 0.0f, -8.0f);
+		glTexCoord2f(1.0f, 0.50f);  glVertex3f(0.0f, 0.0f, -8.0f);
+		glTexCoord2f(1.0f, 1.0f); glVertex3f(0.0f, 8.0f, -8.0f);
+		glTexCoord2f(0.15f, 1.0f); glVertex3f(5.0f, 8.0f, -8.0f);
+	glEnd();
+
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+		glTexCoord2f(0.15f, 0.50f);  glVertex3f(0.0f, 0.0f, -8.0f);
+		glTexCoord2f(1.0f, 0.50f);  glVertex3f(0.0f, 0.0f, 0.0f);
+		glTexCoord2f(1.0f, 1.0f); glVertex3f(0.0f, 8.0f, 0.0f);
+		glTexCoord2f(0.15f, 1.0f); glVertex3f(0.0f, 8.0f, -8.0f);
+	glEnd();
+
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+		glTexCoord2f(0.15f, 0.0f);  glVertex3f(0.0f, 8.0f, 0.0f);
+		glTexCoord2f(1.0f, 0.0f);  glVertex3f(5.0f, 8.0f, 0.0f);
+		glTexCoord2f(1.0f, 0.50f); glVertex3f(5.0f, 8.0f, -8.0f);
+		glTexCoord2f(0.15f, 0.50f); glVertex3f(0.0f, 8.0f, -8.0f);
+	glEnd();
+
+
+	//2
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+		glTexCoord2f(0.0f, 0.0f);  glVertex3f(5.0f, 0.0f, 0.0f);
+		glTexCoord2f(0.15f, 0.0f);  glVertex3f(7.0f, 0.0f, 0.0f);
+		glTexCoord2f(0.15f, 1.0f); glVertex3f(7.0f, 6.0f, 0.0f);
+		glTexCoord2f(0.0f, 1.0f); glVertex3f(5.0f, 6.0f, 0.0f);
+	glEnd();
+
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+		glTexCoord2f(0.15f, 0.0f);  glVertex3f(7.0f, 0.0f, 0.0f);
+		glTexCoord2f(1.0f, 0.0f);  glVertex3f(7.0f, 0.0f, -8.0f);
+		glTexCoord2f(1.0f, 1.0f); glVertex3f(7.0f, 6.0f, -8.0f);
+		glTexCoord2f(0.15f, 1.0f); glVertex3f(7.0f, 6.0f, 0.0f);
+	glEnd();
+
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+		glTexCoord2f(0.15f, 0.50f);  glVertex3f(7.0f, 0.0f, -8.0f);
+		glTexCoord2f(1.0f, 0.50f);  glVertex3f(5.0f, 0.0f, -8.0f);
+		glTexCoord2f(1.0f, 1.0f); glVertex3f(5.0f, 6.0f, -8.0f);
+		glTexCoord2f(0.15f, 1.0f); glVertex3f(7.0f, 6.0f, -8.0f);
+	glEnd();
+
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+		glTexCoord2f(0.0f, 0.0f);  glVertex3f(5.0f, 0.0f, -8.0f);
+		glTexCoord2f(1.0f, 0.0f);  glVertex3f(5.0f, 0.0f, 0.0f);
+		glTexCoord2f(1.0f, 1.0f); glVertex3f(5.0f, 6.0f, 0.0f);
+		glTexCoord2f(0.0f, 1.0f); glVertex3f(5.0f, 6.0f, -8.0f);
+	glEnd();
+
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+		glTexCoord2f(0.15f, 0.0f);  glVertex3f(5.0f, 6.0f, 0.0f);
+		glTexCoord2f(1.0f, 0.0f);  glVertex3f(7.0f, 6.0f, 0.0f);
+		glTexCoord2f(1.0f, 0.50f); glVertex3f(7.0f, 6.0f, -8.0f);
+		glTexCoord2f(0.15f, 0.50f); glVertex3f(5.0f, 6.0f, -8.0f);
+	glEnd();
+
+	//3
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+		glTexCoord2f(0.15f, 0.50f);  glVertex3f(7.0f, 0.0f, 0.0f);
+		glTexCoord2f(1.0f, 0.50f);  glVertex3f(12.0f, 0.0f, 0.0f);
+		glTexCoord2f(1.0f, 1.0f); glVertex3f(12.0f, 8.0f, 0.0f);
+		glTexCoord2f(0.15f, 1.0f); glVertex3f(7.0f, 8.0f, 0.0f);
+	glEnd();
+
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+		glTexCoord2f(0.15f, 0.50f);  glVertex3f(12.0f, 0.0f, 0.0f);
+		glTexCoord2f(1.0f, 0.50f);  glVertex3f(12.0f, 0.0f, -8.0f);
+		glTexCoord2f(1.0f, 1.0f); glVertex3f(12.0f, 8.0f, -8.0f);
+		glTexCoord2f(0.15f, 1.0f); glVertex3f(12.0f, 8.0f, 0.0f);
+	glEnd();
+
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+		glTexCoord2f(0.15f, 0.50f);  glVertex3f(12.0f, 0.0f, -8.0f);
+		glTexCoord2f(1.0f, 0.50f);  glVertex3f(7.0f, 0.0f, -8.0f);
+		glTexCoord2f(1.0f, 1.0f); glVertex3f(7.0f, 8.0f, -8.0f);
+		glTexCoord2f(0.15f, 1.0f); glVertex3f(12.0f, 8.0f, -8.0f);
+	glEnd();
+
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+		glTexCoord2f(0.15f, 0.50f);  glVertex3f(7.0f, 0.0f, -8.0f);
+		glTexCoord2f(1.0f, 0.50f);  glVertex3f(7.0f, 0.0f, 0.0f);
+		glTexCoord2f(1.0f, 1.0f); glVertex3f(7.0f, 8.0f, 0.0f);
+		glTexCoord2f(0.15f, 1.0f); glVertex3f(7.0f, 8.0f, -8.0f);
+	glEnd();
+
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+		glTexCoord2f(0.15f, 0.0f);  glVertex3f(7.0f, 8.0f, 0.0f);
+		glTexCoord2f(1.0f, 0.0f);  glVertex3f(12.0f, 8.0f, 0.0f);
+		glTexCoord2f(1.0f, 0.50f); glVertex3f(12.0f, 8.0f, -8.0f);
+		glTexCoord2f(0.15f, 0.50f); glVertex3f(7.0f, 8.0f, -8.0f);
+	glEnd();
+
+}
+
+void dibujaEdifDes2()
+{
+
+
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, textura[3].texID);
+
+
+
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+		glTexCoord2f(0.0f, 0.50f);  glVertex3f(0.0f, 0.1f, 0.0f);
+		glTexCoord2f(0.50f, 0.50f);  glVertex3f(12.0f, 0.1f, 0.0f);
+		glTexCoord2f(0.50f, 1.0f); glVertex3f(12.0f, 0.1f, -8.0f);
+		glTexCoord2f(0.0f, 1.0f); glVertex3f(0.0f, 0.1f, -8.0f);
+	glEnd();
+
+
+}
+
+void dibujaEdif3()
+{
+
+
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, textura[2].texID);
+
+	//1
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+	glTexCoord2f(0.0f, 0.50f);  glVertex3f(0.0f, 0.0f, 0.0f);
+	glTexCoord2f(1.0f, 0.50f);  glVertex3f(8.0f, 0.0f, 0.0f);
+	glTexCoord2f(1.0f, 1.0f); glVertex3f(8.0f, 7.0f, 0.0f);
+	glTexCoord2f(0.0f, 1.0f); glVertex3f(0.0f, 7.0f, 0.0f);
+	glEnd();
+
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+	glTexCoord2f(0.0f, 0.0f);  glVertex3f(8.0f, 0.0f, 0.0f);
+	glTexCoord2f(0.50f, 0.0f);  glVertex3f(8.0f, 0.0f, -12.0f);
+	glTexCoord2f(0.50f, 0.50f); glVertex3f(8.0f, 7.0f, -12.0f);
+	glTexCoord2f(0.0f, 0.50f); glVertex3f(8.0f, 7.0f, 0.0f);
+	glEnd();
+
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+	glTexCoord2f(0.0f, 0.0f);  glVertex3f(8.0f, 0.0f, -12.0f);
+	glTexCoord2f(0.50f, 0.0f);  glVertex3f(0.0f, 0.0f, -12.0f);
+	glTexCoord2f(0.50f, 0.50f); glVertex3f(0.0f, 7.0f, -12.0f);
+	glTexCoord2f(0.0f, 0.50f); glVertex3f(8.0f, 7.0f, -12.0f);
+	glEnd();
+
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+	glTexCoord2f(0.0f, 0.0f);  glVertex3f(0.0f, 0.0f, -12.0f);
+	glTexCoord2f(0.50f, 0.0f);  glVertex3f(0.0f, 0.0f, 0.0f);
+	glTexCoord2f(0.50f, 0.50f); glVertex3f(0.0f, 7.0f, 0.0f);
+	glTexCoord2f(0.0f, 0.50f); glVertex3f(0.0f, 7.0f, -12.0f);
+	glEnd();
+
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+	glTexCoord2f(0.50f, 0.0f);  glVertex3f(0.0f, 7.0f, 0.0f);
+	glTexCoord2f(1.0f, 0.0f);  glVertex3f(8.0f, 7.0f, 0.0f);
+	glTexCoord2f(1.0f, 0.50f); glVertex3f(8.0f, 7.0f, -12.0f);
+	glTexCoord2f(0.50f, 0.50f); glVertex3f(0.0f, 7.0f, -12.0f);
+	glEnd();
+
+}
+
+void dibujaEdifDes3()
+{
+
+
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, textura[3].texID);
+
+
+	glBegin(GL_QUADS);
+	glNormal3f(0.0f, 1.0f, 0.0f);
+		glTexCoord2f(0.50f, 0.50f);  glVertex3f(0.0f, 0.1f, 0.0f);
+		glTexCoord2f(1.0f, 0.50f);  glVertex3f(8.0f, 0.1f, 0.0f);
+		glTexCoord2f(1.0f, 1.0f); glVertex3f(8.0f, 0.1f, -12.0f);
+		glTexCoord2f(0.50f, 1.0f); glVertex3f(0.0f, 0.1f, -12.0f);
+	glEnd();
+
+
+}
+
+void dibujaBote()
+{
+	float radio=2.8f;
+	float alt=7.5f;
+	float ang, deltaAng, s1, s2, t1, t2, deltas;
+	CVector A, B, C, D, E, F;
+	CVector nA, nB, nC, nD, nE, nF;
+
+	deltaAng=360.0f/12.0f;
+
+	deltas=1.0f/12.0f;
+
+	for(int i=0; i<12; i++)
+	{
+		ang=deltaAng*(i+1);
+		A.x=radio*cos(ang*PI/180.0f);
+		A.y=0.0f;
+		A.z=radio*sin(ang*PI/180.0f);
+
+		ang=deltaAng*i;
+		B.x=radio*cos(ang*PI/180.0f);
+		B.y=0.0f;
+		B.z=radio*sin(ang*PI/180.0f);
+
+		C.x=B.x;
+		C.y=alt;
+		C.z=B.z;
+
+		D.x=A.x;
+		D.y=alt;
+		D.z=A.z;
+
+		E.x=0.0f;
+		E.y=alt;
+		E.z=0.0f;
+
+		F.x=0.0f;
+		F.y=0.0f;
+		F.z=0.0f;
+
+		//Normales por vértice
+		nA=Normaliza(A);
+		nB=Normaliza(B);
+		nC=nB;
+		nD=nA;
+		nE=CVector(0.0f, 1.0f, 0.0f);
+		nF=CVector(0.0f, -1.0f, 0.0f);
+
+		//Se calculan las coordenadas de textura
+		s1=1.0f-(i+1)*deltas;
+		s2=1.0f-i*deltas;
+		t1=0.0f;
+		t2=1.0f;
+
+		glEnable(GL_TEXTURE_2D);
+		glBindTexture(GL_TEXTURE_2D, textura[18].texID);
+
+		//Lado
+		glBegin(GL_QUADS);
+			glNormal3f(nA.x, nA.y, nA.z);
+			glTexCoord2f(s1, t1); glVertex3f(A.x, A.y, A.z);
+			glNormal3f(nB.x, nB.y, nB.z);
+			glTexCoord2f(s2, t1); glVertex3f(B.x, B.y, B.z);
+			glNormal3f(nC.x, nC.y, nC.z);
+			glTexCoord2f(s2, t2); glVertex3f(C.x, C.y, C.z);
+			glNormal3f(nD.x, nD.y, nD.z);
+			glTexCoord2f(s1, t2); glVertex3f(D.x, D.y, D.z);
+		glEnd();
+
+		glDisable(GL_TEXTURE_2D);
+
+		//Tapa superior
+		glBegin(GL_TRIANGLES);
+			glNormal3f(nE.x, nE.y, nE.z);
+			glVertex3f(D.x, D.y, D.z);
+			glVertex3f(C.x, C.y, C.z);
+			glVertex3f(E.x, E.y, E.z);
+		glEnd();
+
+		//Tapa inferior
+		glBegin(GL_TRIANGLES);
+			glNormal3f(nF.x, nF.y, nF.z);
+			glVertex3f(B.x, B.y, B.z);
+			glVertex3f(A.x, A.y, A.z);
+			glVertex3f(F.x, F.y, F.z);
+		glEnd();
+	}
+}
+
+void dibujaPolvoBote()
+{
+	if(estadoBote == 1)
+	{
+		glDisable(GL_LIGHTING);
+		glColor3f(1.0f, 1.0f, 1.0f);
+		glEnable(GL_TEXTURE_2D);
+
+		if(contAnimPolvo < 5)
+			glBindTexture(GL_TEXTURE_2D, textura[23].texID);
+		else if(contAnimPolvo >= 5 && contAnimPolvo < 10)
+			glBindTexture(GL_TEXTURE_2D, textura[24].texID);
+		else if(contAnimPolvo >= 10 && contAnimPolvo < 15)
+			glBindTexture(GL_TEXTURE_2D, textura[25].texID);
+		else if(contAnimPolvo >= 15)
+			glBindTexture(GL_TEXTURE_2D, textura[26].texID);
+
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_ONE, GL_ONE);
+
+		glPushMatrix();
+			glTranslatef(230.0f, 0.0f, 83.0f);
+
+			glBegin(GL_QUADS);
+				glTexCoord2f(0.0f, 0.0f); glVertex3f(-7.0f,  0.0f, 0.0f);
+				glTexCoord2f(1.0f, 0.0f); glVertex3f( 7.0f,  0.0f, 0.0f);
+				glTexCoord2f(1.0f, 1.0f); glVertex3f( 7.0f, 14.0f, 0.0f);
+				glTexCoord2f(0.0f, 1.0f); glVertex3f(-7.0f, 14.0f, 0.0f);
+			glEnd();
+
+			glPushMatrix();
+				glRotatef(-45.0f, 0.0f, 1.0f, 0.0f);
+				glBegin(GL_QUADS);
+					glTexCoord2f(0.0f, 0.0f); glVertex3f(-7.0f,  0.0f, 0.0f);
+					glTexCoord2f(1.0f, 0.0f); glVertex3f( 7.0f,  0.0f, 0.0f);
+					glTexCoord2f(1.0f, 1.0f); glVertex3f( 7.0f, 14.0f, 0.0f);
+					glTexCoord2f(0.0f, 1.0f); glVertex3f(-7.0f, 14.0f, 0.0f);
+				glEnd();
+			glPopMatrix();
+
+			glPushMatrix();
+				glRotatef(45.0f, 0.0f, 1.0f, 0.0f);
+				glBegin(GL_QUADS);
+					glTexCoord2f(0.0f, 0.0f); glVertex3f(-7.0f,  0.0f, 0.0f);
+					glTexCoord2f(1.0f, 0.0f); glVertex3f( 7.0f,  0.0f, 0.0f);
+					glTexCoord2f(1.0f, 1.0f); glVertex3f( 7.0f, 14.0f, 0.0f);
+					glTexCoord2f(0.0f, 1.0f); glVertex3f(-7.0f, 14.0f, 0.0f);
+				glEnd();
+			glPopMatrix();
+
+		glPopMatrix();
+
+		glDisable(GL_BLEND);
+		glDisable(GL_TEXTURE_2D);
+		glEnable(GL_LIGHTING);
+
+		if(contAnimPolvo < 15)
+			contAnimPolvo++;
+		else
+		{
+			estadoBote=2;
+			estadoHoverBoard=1;
+		}
+	}
+}
+
+void dibujaHoverBoard()
+{
+	static float altHB=0.0f;
+	static int dirAlt=1;
+
+	glPushMatrix();
+		glTranslatef(0.0f, 3.0f+altHB, 0.0f);
+		glRotatef(altHB*2.0f, 0.0f, 0.0f, 1.0f);
+		glRotatef(altHB*15.0f, 1.0f, 0.0f, 0.0f);
+		g_Load3ds.Render3DSFile(&g_3DModelTabla, textureModelTabla, 1);
+	glPopMatrix();
+
+	if(dirAlt == 1)
+	{
+		if(altHB < 0.6f)
+			altHB+=0.01f;
+		else
+			dirAlt=2;
+	}
+	else if(dirAlt == 2)
+	{
+		if(altHB > -0.6f)
+			altHB-=0.01f;
+		else
+			dirAlt=1;
+	}
+}
+
+void dibujaCamion()
+{
+	glPushMatrix();
+		glTranslatef(0.0f,0.3f,0.0f);
+		
+		CVector Normal, v1, v2;
+
+		glEnable(GL_TEXTURE_2D);
+		glBindTexture(GL_TEXTURE_2D, textura[19].texID);
+		
+		glBegin(GL_QUADS);
+			
+			//Caja del camion
+			//arriba
+			glNormal3f(0.0f,1.0f,0.0f);
+			glTexCoord2f(0.016f, 0.35f); glVertex3f(  8.0f, 15.0f,-8.0f);
+			glTexCoord2f(0.44f,  0.35f); glVertex3f(-13.0f, 15.0f,-8.0f);
+			glTexCoord2f(0.44f,  0.68f); glVertex3f(-13.0f, 15.0f, 8.0f);
+			glTexCoord2f(0.016f, 0.68f); glVertex3f(  8.0f, 15.0f, 8.0f);
+			//frontal
+			glNormal3f(0.0f,0.0f,1.0f);
+			glTexCoord2f(0.44f,  0.015f); glVertex3f(-13.0f,  4.0f, 8.0f);
+			glTexCoord2f(0.016f, 0.015f); glVertex3f(  8.0f,  4.0f, 8.0f);
+			glTexCoord2f(0.016f, 0.32f);  glVertex3f(  8.0f, 15.0f, 8.0f);
+			glTexCoord2f(0.44f,  0.32f);  glVertex3f(-13.0f, 15.0f, 8.0f);
+			//atras
+			glNormal3f(0.0f,0.0f,-1.0f);
+			glTexCoord2f(0.016f, 0.015f); glVertex3f(  8.0f,  4.0f, -8.0f);
+			glTexCoord2f(0.44f,  0.015f); glVertex3f(-13.0f,  4.0f, -8.0f);
+			glTexCoord2f(0.44f,  0.32f);  glVertex3f(-13.0f, 15.0f, -8.0f);
+			glTexCoord2f(0.016f, 0.32f);  glVertex3f(  8.0f, 15.0f, -8.0f);
+			//izquierda
+			glNormal3f(-1.0f,0.0f,0.0f);
+			glTexCoord2f(0.74f, 0.015f); glVertex3f(-13.0f,  4.0f,-8.0f);
+			glTexCoord2f(0.99f, 0.015f); glVertex3f(-13.0f,  4.0f, 8.0f);
+			glTexCoord2f(0.99f, 0.32f);  glVertex3f(-13.0f, 15.0f, 8.0f);
+			glTexCoord2f(0.74f, 0.32f);  glVertex3f(-13.0f, 15.0f,-8.0f);
+			//derecha
+			glNormal3f(1.0f,0.0f,0.0f);
+			glTexCoord2f(0.465f, 0.015f); glVertex3f(8.0f,  4.0f, 8.0f);
+			glTexCoord2f(0.715f, 0.015f); glVertex3f(8.0f,  4.0f,-8.0f);
+			glTexCoord2f(0.715f, 0.32f);  glVertex3f(8.0f, 15.0f,-8.0f);
+			glTexCoord2f(0.465f, 0.32f);  glVertex3f(8.0f, 15.0f, 8.0f);
+
+			//inferior de la caja (frontal)
+			glNormal3f(0.0f,0.0f,1.0f);
+			glTexCoord2f(0.2f, 0.75f); glVertex3f(-12.0f, 2.0f, 6.0f);
+			glTexCoord2f(0.4f, 0.75f); glVertex3f(  9.0f, 2.0f, 6.0f);
+			glTexCoord2f(0.4f, 0.9f);  glVertex3f(  9.0f, 4.0f, 6.0f);
+			glTexCoord2f(0.2f, 0.9f);  glVertex3f(-12.0f, 4.0f, 6.0f);
+
+			//inferior de la caja (trasera)
+			glNormal3f(0.0f,0.0f,-1.0f);
+			glTexCoord2f(0.2f, 0.75f); glVertex3f(  9.0f, 2.0f, -6.0f);
+			glTexCoord2f(0.4f, 0.75f); glVertex3f(-12.0f, 2.0f, -6.0f);
+			glTexCoord2f(0.4f, 0.9f);  glVertex3f(-12.0f, 4.0f, -6.0f);
+			glTexCoord2f(0.2f, 0.9f);  glVertex3f(  9.0f, 4.0f, -6.0f);
+
+			//inferior de la caja (derecha)
+			glNormal3f(1.0f,0.0f,0.0f);
+			glTexCoord2f(0.2f, 0.75f); glVertex3f(9.0f, 2.0f,  6.0f);
+			glTexCoord2f(0.4f, 0.75f); glVertex3f(9.0f, 2.0f, -6.0f);
+			glTexCoord2f(0.4f, 0.9f);  glVertex3f(9.0f, 4.0f, -6.0f);
+			glTexCoord2f(0.2f, 0.9f);  glVertex3f(9.0f, 4.0f,  6.0f);
+
+			//inferior de la caja (izquierda)
+			glNormal3f(-1.0f,0.0f,0.0f);
+			glTexCoord2f(0.2f, 0.75f); glVertex3f(-12.0f, 2.0f, -6.0f);
+			glTexCoord2f(0.4f, 0.75f); glVertex3f(-12.0f, 2.0f,  6.0f);
+			glTexCoord2f(0.4f, 0.9f);  glVertex3f(-12.0f, 4.0f,  6.0f);
+			glTexCoord2f(0.2f, 0.9f);  glVertex3f(-12.0f, 4.0f, -6.0f);
+
+			//inferior de la caja (superior: union)
+			glNormal3f(0.0f,1.0f,0.0f);
+			glTexCoord2f(0.2f, 0.75f); glVertex3f(8.0f, 4.0f,  6.0f);
+			glTexCoord2f(0.4f, 0.75f); glVertex3f(9.0f, 4.0f,  6.0f);
+			glTexCoord2f(0.4f, 0.9f);  glVertex3f(9.0f, 4.0f, -6.0f);
+			glTexCoord2f(0.2f, 0.9f);  glVertex3f(8.0f, 4.0f, -6.0f);
+
+			//Cabina
+
+			//arriba
+			glNormal3f(0.0f,1.0f,0.0f);
+			glTexCoord2f(0.5f, 0.75f); glVertex3f(17.0f, 11.0f,  6.0f);
+			glTexCoord2f(0.7f, 0.75f); glVertex3f(17.0f, 11.0f, -6.0f);
+			glTexCoord2f(0.7f, 0.9f);  glVertex3f( 9.0f, 11.0f, -6.0f);
+			glTexCoord2f(0.5f, 0.9f);  glVertex3f( 9.0f, 11.0f,  6.0f);
+
+			//frontal ventana
+			v1=CVector(20.0f, 7.0f, -7.0f)-CVector(20.0f, 7.0f, 7.0f);
+			v2=CVector(17.0f, 11.0f, 6.0f)-CVector(20.0f, 7.0f, 7.0f);
+			
+			Normal=Cruz(v1, v2);
+			Normal=Normaliza(Normal);
+
+			glNormal3f(Normal.x,Normal.y,Normal.z);
+			glTexCoord2f(0.475f, 0.55f); glVertex3f(20.0f,  7.0f,  7.0f);
+			glTexCoord2f(0.715f, 0.55f); glVertex3f(20.0f,  7.0f, -7.0f);
+			glTexCoord2f(0.705f, 0.68f); glVertex3f(17.0f, 11.0f, -6.0f);
+			glTexCoord2f(0.485f, 0.68f); glVertex3f(17.0f, 11.0f,  6.0f);
+
+			//frontal parrilla
+			glNormal3f(1.0f,0.0f,0.0f);
+			glTexCoord2f(0.475f, 0.37f); glVertex3f(20.0f, 2.0f,  7.0f);
+			glTexCoord2f(0.715f, 0.37f); glVertex3f(20.0f, 2.0f, -7.0f);
+			glTexCoord2f(0.715f, 0.55f); glVertex3f(20.0f, 7.0f, -7.0f);
+			glTexCoord2f(0.475f, 0.55f); glVertex3f(20.0f, 7.0f,  7.0f);
+			
+			//puerta derecha (parte superior)
+			v1=CVector(20.0f, 7.0f, 7.0f)-CVector(9.0f, 7.0f, 7.0f);
+			v2=CVector(9.0f, 11.0f, 6.0f)-CVector(9.0f, 7.0f, 7.0f);
+			
+			Normal=Cruz(v1, v2);
+			Normal=Normaliza(Normal);
+
+			glNormal3f(Normal.x,Normal.y,Normal.z);
+			glTexCoord2f(0.75f, 0.57f); glVertex3f( 9.0f,  7.0f, 7.0f);
+			glTexCoord2f(0.95f, 0.57f); glVertex3f(20.0f,  7.0f, 7.0f);
+			glTexCoord2f(0.90f, 0.68f); glVertex3f(17.0f, 11.0f, 6.0f);
+			glTexCoord2f(0.75f, 0.68f); glVertex3f( 9.0f, 11.0f, 6.0f);
+
+			//puerta derecha (parte media)
+			glNormal3f(0.0f,0.0f,1.0f);
+			glTexCoord2f(0.75f, 0.465f); glVertex3f( 9.0f, 4.0f, 7.0f);
+			glTexCoord2f(0.95f, 0.465f); glVertex3f(20.0f, 4.0f, 7.0f);
+			glTexCoord2f(0.95f, 0.57f);  glVertex3f(20.0f, 7.0f, 7.0f);
+			glTexCoord2f(0.75f, 0.57f);  glVertex3f( 9.0f, 7.0f, 7.0f);
+
+			//puerta derecha (parte inferior)
+			glNormal3f(0.0f,0.0f,1.0f);
+			glTexCoord2f(0.9f,  0.37f);  glVertex3f(17.0f, 2.0f, 7.0f);
+			glTexCoord2f(0.95f, 0.37f);  glVertex3f(20.0f, 2.0f, 7.0f);
+			glTexCoord2f(0.95f, 0.465f); glVertex3f(20.0f, 4.0f, 7.0f);
+			glTexCoord2f(0.85f, 0.465f); glVertex3f(15.5f, 4.0f, 7.0f);
+
+			//puerta izquierda (parte superior)
+			v1=CVector(9.0f, 7.0f, -7.0f)-CVector(20.0f, 7.0f, -7.0f);
+			v2=CVector(17.0f, 11.0f, -6.0f)-CVector(20.0f, 7.0f, -7.0f);
+			
+			Normal=Cruz(v1, v2);
+			Normal=Normaliza(Normal);
+
+			glNormal3f(Normal.x,Normal.y,Normal.z);
+			glTexCoord2f(0.95f, 0.57f); glVertex3f(20.0f,  7.0f, -7.0f);
+			glTexCoord2f(0.75f, 0.57f); glVertex3f( 9.0f,  7.0f, -7.0f);
+			glTexCoord2f(0.75f, 0.68f); glVertex3f( 9.0f, 11.0f, -6.0f);
+			glTexCoord2f(0.90f, 0.68f); glVertex3f(17.0f, 11.0f, -6.0f);
+
+			//puerta izquierda (parte media)
+			glNormal3f(0.0f,0.0f,-1.0f);
+			glTexCoord2f(0.95f, 0.465f); glVertex3f(20.0f, 4.0f, -7.0f);
+			glTexCoord2f(0.75f, 0.465f); glVertex3f( 9.0f, 4.0f, -7.0f);
+			glTexCoord2f(0.75f, 0.57f);  glVertex3f( 9.0f, 7.0f, -7.0f);
+			glTexCoord2f(0.95f, 0.57f);  glVertex3f(20.0f, 7.0f, -7.0f);
+
+			//puerta izquierda (parte inferior)
+			glNormal3f(0.0f,0.0f,-1.0f);
+			glTexCoord2f(0.95f, 0.37f);  glVertex3f(20.0f, 2.0f, -7.0f);
+			glTexCoord2f(0.9f,  0.37f);  glVertex3f(17.0f, 2.0f, -7.0f);
+			glTexCoord2f(0.85f, 0.465f); glVertex3f(15.5f, 4.0f, -7.0f);
+			glTexCoord2f(0.95f, 0.465f); glVertex3f(20.0f, 4.0f, -7.0f);
+
+			//trasera ventana
+			glNormal3f(-1.0f,0.0f,0.0f);
+			glTexCoord2f(0.74f,  0.8f);   glVertex3f(9.0f,  7.0f, -7.0f);
+			glTexCoord2f(0.99f,  0.8f);   glVertex3f(9.0f,  7.0f,  7.0f);
+			glTexCoord2f(0.975f, 0.945f); glVertex3f(9.0f, 11.0f,  6.0f);
+			glTexCoord2f(0.755f, 0.945f); glVertex3f(9.0f, 11.0f, -6.0f);
+
+			//trasera inferior
+			glNormal3f(-1.0f, 0.0f, 0.0f);
+			glTexCoord2f(0.74f, 0.725f); glVertex3f(9.0f, 4.0f, -7.0f);
+			glTexCoord2f(0.99f, 0.725f); glVertex3f(9.0f, 4.0f,  7.0f);
+			glTexCoord2f(0.99f, 0.8f);   glVertex3f(9.0f, 7.0f,  7.0f);
+			glTexCoord2f(0.74f, 0.8f);   glVertex3f(9.0f, 7.0f, -7.0f);
+
+			//inferior (inclinada)
+			v1=CVector(17.0f, 2.0f, 7.0f)-CVector(17.0f, 2.0f, -7.0f);
+			v2=CVector(15.5f, 4.0f, -7.0f)-CVector(17.0f, 2.0f, -7.0f);
+			
+			Normal=Cruz(v1, v2);
+			Normal=Normaliza(Normal);
+
+			glNormal3f(Normal.x,Normal.y,Normal.z);
+			glTexCoord2f(0.2f, 0.75f); glVertex3f(17.0f, 2.0f, -7.0f);
+			glTexCoord2f(0.4f, 0.75f); glVertex3f(17.0f, 2.0f,  7.0f);
+			glTexCoord2f(0.4f, 0.9f);  glVertex3f(15.5f, 4.0f,  7.0f);
+			glTexCoord2f(0.2f, 0.9f);  glVertex3f(15.5f, 4.0f, -7.0f);
+
+			//Base de la cabina
+
+			//inferior de la cabina (frontal)
+			glNormal3f(0.0f,0.0f,1.0f);
+			glTexCoord2f(0.2f, 0.75f); glVertex3f( 9.0f, 2.0f, 5.0f);
+			glTexCoord2f(0.4f, 0.75f); glVertex3f(20.0f, 2.0f, 5.0f);
+			glTexCoord2f(0.4f, 0.9f);  glVertex3f(20.0f, 4.0f, 5.0f);
+			glTexCoord2f(0.2f, 0.9f);  glVertex3f( 9.0f, 4.0f, 5.0f);
+			
+			//inferior de la cabina (trasera)
+			glNormal3f(0.0f,0.0f,-1.0f);
+			glTexCoord2f(0.2f, 0.75f); glVertex3f(17.0f, 2.0f, -5.0f);
+			glTexCoord2f(0.4f, 0.75f); glVertex3f( 9.0f, 2.0f, -5.0f);
+			glTexCoord2f(0.4f, 0.9f);  glVertex3f( 9.0f, 4.0f, -5.0f);
+			glTexCoord2f(0.2f, 0.9f);  glVertex3f(17.0f, 4.0f, -5.0f);
+
+			//inferior de la cabina (izquierda)
+			glNormal3f(-1.0f,0.0f,0.0f);
+			glTexCoord2f(0.2f, 0.75f); glVertex3f(9.0f, 2.0f, -5.0f);
+			glTexCoord2f(0.4f, 0.75f); glVertex3f(9.0f, 2.0f,  5.0f);
+			glTexCoord2f(0.4f, 0.9f);  glVertex3f(9.0f, 4.0f,  5.0f);
+			glTexCoord2f(0.2f, 0.9f);  glVertex3f(9.0f, 4.0f, -5.0f);
+
+		glEnd();
+		
+		glDisable(GL_TEXTURE_2D);
+
+	glPopMatrix();
+				
+	///LLANTAS DELANTERAS
+	glPushMatrix();
+		glTranslatef(13.0f,2.0f,6.4f);
+		glPushMatrix();
+			glRotatef(-90,0.0f,1.0f,0.0f);
+			glRotatef(angLlantasCamion, 1.0f, 0.0f, 0.0f);
+			g_Load3ds.Render3DSFile(&g_3DModelLlanta, textureModelLlanta, 1); //LLanta
+		glPopMatrix();
+	glPopMatrix();
+
+	glPushMatrix();
+		glTranslatef(13.0f,2.0f,-6.4f);
+		glPushMatrix();
+			glRotatef(90,0.0f,1.0f,0.0f);
+			glRotatef(-angLlantasCamion, 1.0f, 0.0f, 0.0f);
+			g_Load3ds.Render3DSFile(&g_3DModelLlanta, textureModelLlanta, 1); //LLanta
+		glPopMatrix();
+	glPopMatrix();
+
+	///LLANTAS TRASERAS
+	glPushMatrix();
+		glTranslatef(-8.0f,2.0f,6.8f);
+		glPushMatrix();
+			glRotatef(-90,0.0f,1.0f,0.0f);
+			glRotatef(angLlantasCamion, 1.0f, 0.0f, 0.0f);
+			g_Load3ds.Render3DSFile(&g_3DModelLlanta, textureModelLlanta, 1); //LLanta
+		glPopMatrix();
+	glPopMatrix();
+
+	glPushMatrix();
+		glTranslatef(-8.0f,2.0f,-6.8f);
+		glPushMatrix();
+			glRotatef(90,0.0f,1.0f,0.0f);
+			glRotatef(-angLlantasCamion, 1.0f, 0.0f, 0.0f);
+			g_Load3ds.Render3DSFile(&g_3DModelLlanta, textureModelLlanta, 1); //LLanta
+		glPopMatrix();
+	glPopMatrix();
+		
+}
+
+void actualizaEstadoCamion()
+{
+	if(estadoCamion == 1)
+	{
+		if(angCamion < 0.0f)
+			angCamion+=1.0f;
+		else
+			estadoCamion=2;
+		
+		if(despCamion < 10.0f)
+			despCamion+=0.5f;
+
+		if(despCamion > 8.0f)
+			estadoReja=1;
+
+		angLlantasCamion+=5.0f;
+		if(angLlantasCamion > 360.0f) angLlantasCamion-=360.0f;
+	}
+}
+
+void actualizaEstadoReja()
+{
+	if(estadoReja == 1)
+	{
+		if(angReja > -90.0f)
+			angReja-=10.0f;
+		else
+		{
+			estadoReja=2;
+			planoCol[3].estado=1;
+			planoCol[4].estado=1;
+		}
+	}
+}
+
+void dibujaEscenario(int tr)
+{
+	CVector N, vec1, vec2;
+
+	glEnable(GL_TEXTURE_2D);
+
+	if(tr == 0) //Planos que no llevan transparencia
+	{
+		//Piso de las calles
+		glBindTexture(GL_TEXTURE_2D, textura[16].texID);
+
+		//1
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 1.0f, 0.0f);
+			glTexCoord2f(0.0f, 0.0f);  glVertex3f(  0.0f, 0.0f,  20.0f);
+			glTexCoord2f(1.0f, 0.0f);  glVertex3f(160.0f, 0.0f,  20.0f);
+			glTexCoord2f(1.0f, 0.23f); glVertex3f(160.0f, 0.0f, -20.0f);
+			glTexCoord2f(0.0f, 0.23f); glVertex3f(  0.0f, 0.0f, -20.0f);
+		glEnd();
+
+		//2
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 1.0f, 0.0f);
+			glTexCoord2f(1.0f, 0.25f); glVertex3f(160.0f, 0.0f,  120.0f);
+			glTexCoord2f(1.0f, 0.47f); glVertex3f(200.0f, 0.0f,  120.0f);
+			glTexCoord2f(0.0f, 0.47f); glVertex3f(200.0f, 0.0f, -120.0f);
+			glTexCoord2f(0.0f, 0.25f); glVertex3f(160.0f, 0.0f, -120.0f);
+		glEnd();
+
+		//3
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 1.0f, 0.0f);
+			glTexCoord2f(0.0f, 0.75f); glVertex3f(200.0f, 0.0f, -80.0f);
+			glTexCoord2f(1.0f, 0.75f); glVertex3f(250.0f, 0.0f, -80.0f);
+			glTexCoord2f(1.0f, 1.0f); glVertex3f(250.0f, 0.0f, -120.0f);
+			glTexCoord2f(0.0f, 1.0f); glVertex3f(200.0f, 0.0f, -120.0f);
+		glEnd();
+
+		//4
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 1.0f, 0.0f);
+			glTexCoord2f(0.0f, 0.49f); glVertex3f(200.0f, 0.0f, 120.0f);
+			glTexCoord2f(1.0f, 0.49f); glVertex3f(400.0f, 0.0f, 120.0f);
+			glTexCoord2f(1.0f, 0.75f); glVertex3f(400.0f, 0.0f, 80.0f);
+			glTexCoord2f(0.0f, 0.75f); glVertex3f(200.0f, 0.0f, 80.0f);
+		glEnd();
+
+		//Paredes de los edificios
+
+		//Edificio 1
+
+		
+
+		glBindTexture(GL_TEXTURE_2D, textura[3].texID);
+
+		//1
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 0.0f, 1.0f);
+			glTexCoord2f(0.0f, 0.14f); glVertex3f(160.0f,  0.0f, -120.0f);
+			glTexCoord2f(1.0f, 0.14f); glVertex3f(200.0f,  0.0f, -120.0f);
+			glTexCoord2f(1.0f, 1.0f); glVertex3f(200.0f, 60.0f, -120.0f);
+			glTexCoord2f(0.0f, 1.0f); glVertex3f(160.0f, 60.0f, -120.0f);
+		glEnd();
+
+		vec1=CVector(200.0f, 20.0f, -113.0f)-CVector(160.0f, 20.0f, -113.0f);
+		vec2=CVector(160.0f, 24.0f, -120.0f)-CVector(160.0f, 20.0f, -113.0f);
+		N=Normaliza(Cruz(vec1, vec2));
+
+		//2
+		glBegin(GL_QUADS);
+			glNormal3f(N.x, N.y, N.z);
+			glTexCoord2f(0.0f, 0.0f); glVertex3f(160.0f, 20.0f, -113.0f);
+			glTexCoord2f(1.0f, 0.0f); glVertex3f(200.0f, 20.0f, -113.0f);
+			glTexCoord2f(1.0f, 0.14f); glVertex3f(200.0f, 24.0f, -120.0f);
+			glTexCoord2f(0.0f, 0.14f); glVertex3f(160.0f, 24.0f, -120.0f);
+		glEnd();
+
+		//3
+		glBegin(GL_QUADS);
+			glNormal3f(1.0f, 0.0f, 0.0f);
+			glTexCoord2f(0.0f, 0.4f);  glVertex3f(200.0f,  0.0f, -120.0f);
+			glTexCoord2f(0.2f, 0.4f);  glVertex3f(200.0f,  0.0f, -122.0f);
+			glTexCoord2f(0.2f, 1.0f); glVertex3f(200.0f, 60.0f, -122.0f);
+			glTexCoord2f(0.0f, 1.0f); glVertex3f(200.0f, 60.0f, -120.0f);
+		glEnd();
+
+		//Edificio 5
+
+		glBindTexture(GL_TEXTURE_2D, textura[4].texID);
+
+		//1
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 0.0f, 1.0f);
+			glTexCoord2f(0.0f, 0.18f); glVertex3f(200.0f,  0.0f, -120.0f);
+			glTexCoord2f(1.0f, 0.18f); glVertex3f(250.0f,  0.0f, -120.0f);
+			glTexCoord2f(1.0f, 0.45f); glVertex3f(250.0f, 25.0f, -120.0f);
+			glTexCoord2f(0.0f, 0.45f); glVertex3f(200.0f, 25.0f, -120.0f);
+		glEnd();
+
+		//2
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 0.0f, 1.0f);
+			glTexCoord2f(0.0f, 0.45f); glVertex3f(200.0f, 25.0f, -122.0f);
+			glTexCoord2f(1.0f, 0.45f); glVertex3f(250.0f, 25.0f, -122.0f);
+			glTexCoord2f(1.0f, 1.0f); glVertex3f(250.0f, 60.0f, -122.0f);
+			glTexCoord2f(0.0f, 1.0f); glVertex3f(200.0f, 60.0f, -122.0f);
+		glEnd();
+
+		//3
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 1.0f, 0.0f);
+			glTexCoord2f(0.0f, 0.0f); glVertex3f(200.0f, 25.0f, -120.0f);
+			glTexCoord2f(1.0f, 0.0f); glVertex3f(250.0f, 25.0f, -120.0f);
+			glTexCoord2f(1.0f, 0.18f); glVertex3f(250.0f, 25.0f, -122.0f);
+			glTexCoord2f(0.0f, 0.18f); glVertex3f(200.0f, 25.0f, -122.0f);
+		glEnd();
+
+		//Edificio 6
+
+
+		glBindTexture(GL_TEXTURE_2D, textura[5].texID);
+
+		//1
+		glBegin(GL_QUADS);
+			glNormal3f(-1.0f, 0.0f, 0.0f);
+			glTexCoord2f(0.0f, 0.0f); glVertex3f(250.0f,  0.0f, -122.0f);
+			glTexCoord2f(1.0f, 0.0f); glVertex3f(250.0f,  0.0f, -80.0f);
+			glTexCoord2f(1.0f, 1.0f); glVertex3f(250.0f, 60.0f, -80.0f);
+			glTexCoord2f(0.0f, 1.0f); glVertex3f(250.0f, 60.0f, -122.0f);
+		glEnd();
+
+		glBindTexture(GL_TEXTURE_2D, textura[7].texID);
+
+		//2
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 1.0f, 0.0f);
+			glTexCoord2f(0.0f, 0.0f); glVertex3f(250.0f, 60.0f, -20.0f);
+			glTexCoord2f(1.0f, 0.0f); glVertex3f(300.0f, 60.0f, -20.0f);
+			glTexCoord2f(1.0f, 1.0f); glVertex3f(300.0f, 60.0f, -150.0f);
+			glTexCoord2f(0.0f, 1.0f); glVertex3f(250.0f, 60.0f, -150.0f);
+		glEnd();
+
+		//Edificio 7
+
+		glBindTexture(GL_TEXTURE_2D, textura[6].texID);
+
+		//1
+		glBegin(GL_QUADS);
+			glNormal3f(-1.0f, 0.0f, 0.0f);
+			glTexCoord2f(0.11f, 0.0f); glVertex3f(200.0f,  0.0f, -80.0f);
+			glTexCoord2f(1.0f, 0.0f); glVertex3f(200.0f,  0.0f, -30.0f);
+			glTexCoord2f(1.0f, 0.27f); glVertex3f(200.0f, 30.0f, -30.0f);
+			glTexCoord2f(0.11f, 0.27f); glVertex3f(200.0f, 30.0f, -80.0f);
+		glEnd();
+
+		//2
+		glBegin(GL_QUADS);
+			glNormal3f(-1.0f, 0.0f, 0.0f);
+			glTexCoord2f(0.11f, 0.27f); glVertex3f(200.0f, 30.0f, -80.0f);
+			glTexCoord2f(0.39f, 0.27f); glVertex3f(200.0f, 30.0f, -64.0f);
+			glTexCoord2f(0.39f, 0.67f); glVertex3f(200.0f, 60.0f, -64.0f);
+			glTexCoord2f(0.11f, 0.67f); glVertex3f(200.0f, 60.0f, -80.0f);
+		glEnd();
+
+		//3
+		glBegin(GL_QUADS);
+			glNormal3f(-1.0f, 0.0f, 0.0f);
+			glTexCoord2f(0.73f, 0.27f); glVertex3f(200.0f, 30.0f, -46.0f);
+			glTexCoord2f(1.0f,  0.27f); glVertex3f(200.0f, 30.0f, -30.0f);
+			glTexCoord2f(1.0f,  0.67f); glVertex3f(200.0f, 60.0f, -30.0f);
+			glTexCoord2f(0.73f, 0.67f); glVertex3f(200.0f, 60.0f, -46.0f);
+		glEnd();
+
+		//4
+		glBegin(GL_QUADS);
+			glNormal3f(-1.0f, 0.0f, 0.0f);
+			glTexCoord2f(0.39f, 0.27f); glVertex3f(196.0f, 30.0f, -64.0f);
+			glTexCoord2f(0.73f, 0.27f); glVertex3f(196.0f, 30.0f, -46.0f);
+			glTexCoord2f(0.73f, 0.67f); glVertex3f(196.0f, 60.0f, -46.0f);
+			glTexCoord2f(0.39f, 0.67f); glVertex3f(196.0f, 60.0f, -64.0f);
+		glEnd();
+
+		//5
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 0.0f, 1.0f);
+			glTexCoord2f(0.0f, 0.5f); glVertex3f(196.0f, 30.0f, -46.0f);
+			glTexCoord2f(0.1f, 0.5f); glVertex3f(200.0f, 30.0f, -46.0f);
+			glTexCoord2f(0.1f, 1.0f); glVertex3f(200.0f, 60.0f, -46.0f);
+			glTexCoord2f(0.0f, 1.0f); glVertex3f(196.0f, 60.0f, -46.0f);
+		glEnd();
+
+		glBindTexture(GL_TEXTURE_2D, textura[7].texID);
+
+		//6
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 1.0f, 0.0f);
+			glTexCoord2f(0.0f, 0.0f); glVertex3f(196.0f, 60.0f, -46.0f);
+			glTexCoord2f(0.3f, 0.0f); glVertex3f(200.0f, 60.0f, -46.0f);
+			glTexCoord2f(0.3f, 1.0f); glVertex3f(200.0f, 60.0f, -64.0f);
+			glTexCoord2f(0.0f, 1.0f); glVertex3f(196.0f, 60.0f, -64.0f);
+		glEnd();
+
+		//El plano 7 lleva transparencia
+
+		glBindTexture(GL_TEXTURE_2D, textura[6].texID);
+
+		//8
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 0.0f, 1.0f);
+			glTexCoord2f(0.11f, 0.67f); glVertex3f(200.0f,  0.0f, -30.0f);
+			glTexCoord2f(1.0f,  0.67f); glVertex3f(250.0f,  0.0f, -30.0f);
+			glTexCoord2f(1.0f,  1.0f); glVertex3f(250.0f, 60.0f, -30.0f);
+			glTexCoord2f(0.11f, 1.0f); glVertex3f(200.0f, 60.0f, -30.0f);
+		glEnd();
+
+		//Edificio 8
+
+		glBindTexture(GL_TEXTURE_2D, textura[17].texID);
+
+		//1
+		glBegin(GL_QUADS);
+			glNormal3f(-1.0f, 0.0f, 0.0f);
+			glTexCoord2f(0.0f, 0.0f);  glVertex3f(200.0f,  0.0f, -30.0f);
+			glTexCoord2f(1.0f, 0.0f);  glVertex3f(200.0f,  0.0f,  20.0f);
+			glTexCoord2f(1.0f, 0.72f); glVertex3f(200.0f, 45.0f,  20.0f);
+			glTexCoord2f(0.0f, 0.72f); glVertex3f(200.0f, 45.0f, -30.0f);
+		glEnd();
+
+		vec1=CVector(200.0f, 45.0f,  20.0f)-CVector(200.0f, 45.0f, -30.0f);
+		vec2=CVector(210.0f, 60.0f, -30.0f)-CVector(200.0f, 45.0f, -30.0f);
+		N=Normaliza(Cruz(vec1, vec2));
+
+		//2
+		glBegin(GL_QUADS);
+			glNormal3f(N.x, N.y, N.z);
+			glTexCoord2f(0.0f, 0.72f); glVertex3f(200.0f, 45.0f, -30.0f);
+			glTexCoord2f(1.0f, 0.72f); glVertex3f(200.0f, 45.0f,  20.0f);
+			glTexCoord2f(1.0f, 1.0f);  glVertex3f(210.0f, 60.0f,  20.0f);
+			glTexCoord2f(0.0f, 1.0f);  glVertex3f(210.0f, 60.0f, -30.0f);
+		glEnd();
+
+		glBindTexture(GL_TEXTURE_2D, textura[21].texID);
+
+		//3
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 0.0f, 1.0f);
+			glTexCoord2f(0.0f, 0.0f);  glVertex3f(200.0f,  0.0f, 20.0f);
+			glTexCoord2f(1.0f, 0.0f);  glVertex3f(250.0f,  0.0f, 20.0f);
+			glTexCoord2f(1.0f, 0.55f); glVertex3f(250.0f, 45.0f, 20.0f);
+			glTexCoord2f(0.0f, 0.55f); glVertex3f(200.0f, 45.0f, 20.0f);
+		glEnd();
+
+		//4
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 0.0f, 1.0f);
+			glTexCoord2f(0.0f, 0.55f); glVertex3f(200.0f, 45.0f, 20.0f);
+			glTexCoord2f(1.0f, 0.55f); glVertex3f(250.0f, 45.0f, 20.0f);
+			glTexCoord2f(1.0f, 1.0f);  glVertex3f(250.0f, 60.0f, 20.0f);
+			glTexCoord2f(0.27f, 1.0f);  glVertex3f(210.0f, 60.0f, 20.0f);
+		glEnd();
+
+		//Edificio 9
+
+		glBindTexture(GL_TEXTURE_2D, textura[8].texID);
+
+		//1
+		glBegin(GL_QUADS);
+			glNormal3f(-1.0f, 0.0f, 0.0f);
+			glTexCoord2f(0.0f, 0.5f); glVertex3f(200.0f,  0.0f, 20.0f);
+			glTexCoord2f(1.0f, 0.5f); glVertex3f(200.0f,  0.0f, 80.0f);
+			glTexCoord2f(1.0f, 0.74f); glVertex3f(200.0f, 30.0f, 80.0f);
+			glTexCoord2f(0.0f, 0.74f); glVertex3f(200.0f, 30.0f, 20.0f);
+		glEnd();
+
+		//2
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 0.0f, 1.0f);
+			glTexCoord2f(0.0f, 0.74f); glVertex3f(200.0f, 0.0f, 80.0f);
+			glTexCoord2f(0.59f, 0.74f); glVertex3f(240.0f, 0.0f, 80.0f);
+			glTexCoord2f(0.59f, 1.0f); glVertex3f(240.0f, 30.0f, 80.0f);
+			glTexCoord2f(0.0f, 1.0f); glVertex3f(200.0f, 30.0f, 80.0f);
+		glEnd();
+
+		//3
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 1.0f, 0.0f);
+			glTexCoord2f(1.0f, 0.0f); glVertex3f(200.0f, 30.0f, 80.0f);
+			glTexCoord2f(1.0f, 0.5f); glVertex3f(240.0f, 30.0f, 80.0f);
+			glTexCoord2f(0.0f, 0.5f); glVertex3f(240.0f, 30.0f, 20.0f);
+			glTexCoord2f(0.0f, 0.0f); glVertex3f(200.0f, 30.0f, 20.0f);
+		glEnd();
+
+		//Edificio 10
+
+		glBindTexture(GL_TEXTURE_2D, textura[9].texID);
+
+		//1
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 0.0f, 1.0f);
+			glTexCoord2f(0.0f,  0.41f); glVertex3f(240.0f,  0.0f, 80.0f);
+			glTexCoord2f(0.54f, 0.41f); glVertex3f(290.0f,  0.0f, 80.0f);
+			glTexCoord2f(0.54f, 1.0f); glVertex3f(290.0f, 50.0f, 80.0f);
+			glTexCoord2f(0.0f,  1.0f); glVertex3f(240.0f, 50.0f, 80.0f);
+		glEnd();
+
+		//2
+		glBegin(GL_QUADS);
+			glNormal3f(-1.0f, 0.0f, 0.0f);
+			glTexCoord2f(1.0f, 0.0f); glVertex3f(240.0f,  0.0f, 30.0f);
+			glTexCoord2f(1.0f, 0.41f); glVertex3f(240.0f,  0.0f, 80.0f);
+			glTexCoord2f(0.0f, 0.41f); glVertex3f(240.0f, 50.0f, 80.0f);
+			glTexCoord2f(0.0f, 0.0f); glVertex3f(240.0f, 50.0f, 30.0f);
+		glEnd();
+
+		//3
+		glBegin(GL_QUADS);
+			glNormal3f(1.0f, 0.0f, 0.0f);
+			glTexCoord2f(0.54f, 0.41f); glVertex3f(290.0f,  0.0f, 80.0f);
+			glTexCoord2f(1.0f,  0.41f); glVertex3f(290.0f,  0.0f, 30.0f);
+			glTexCoord2f(1.0f,  1.0f); glVertex3f(290.0f, 50.0f, 30.0f);
+			glTexCoord2f(0.54f, 1.0f); glVertex3f(290.0f, 50.0f, 80.0f);
+		glEnd();
+
+		//Edificio 11
+
+		glBindTexture(GL_TEXTURE_2D, textura[10].texID);
+
+		//1
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 0.0f, 1.0f);
+			glTexCoord2f(0.0f, 0.0f); glVertex3f(290.0f,  0.0f, 80.0f);
+			glTexCoord2f(1.0f, 0.0f); glVertex3f(312.0f,  0.0f, 80.0f);
+			glTexCoord2f(1.0f, 0.5f); glVertex3f(312.0f, 25.0f, 80.0f);
+			glTexCoord2f(0.0f, 0.5f); glVertex3f(290.0f, 25.0f, 80.0f);
+		glEnd();
+
+		//2
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 1.0f, 0.0f);
+			glTexCoord2f(0.0f, 0.5f); glVertex3f(290.0f, 25.0f, 80.0f);
+			glTexCoord2f(1.0f, 0.5f); glVertex3f(312.0f, 25.0f, 80.0f);
+			glTexCoord2f(1.0f, 1.0f); glVertex3f(312.0f, 25.0f, 30.0f);
+			glTexCoord2f(0.0f, 1.0f); glVertex3f(290.0f, 25.0f, 30.0f);
+		glEnd();
+
+		//Edificio 12
+
+		glBindTexture(GL_TEXTURE_2D, textura[11].texID);
+
+		//1
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 0.0f, 1.0f);
+			glTexCoord2f(0.0f, 0.0f); glVertex3f(312.0f,  0.0f, 80.0f);
+			glTexCoord2f(1.0f, 0.0f); glVertex3f(334.0f,  0.0f, 80.0f);
+			glTexCoord2f(1.0f, 0.5f); glVertex3f(334.0f, 25.0f, 80.0f);
+			glTexCoord2f(0.0f, 0.5f); glVertex3f(312.0f, 25.0f, 80.0f);
+		glEnd();
+
+		//2
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 1.0f, 0.0f);
+			glTexCoord2f(0.0f, 0.5f); glVertex3f(312.0f, 25.0f, 80.0f);
+			glTexCoord2f(1.0f, 0.5f); glVertex3f(334.0f, 25.0f, 80.0f);
+			glTexCoord2f(1.0f, 1.0f); glVertex3f(334.0f, 25.0f, 30.0f);
+			glTexCoord2f(0.0f, 1.0f); glVertex3f(312.0f, 25.0f, 30.0f);
+		glEnd();
+
+		//Edificio 13
+
+		glBindTexture(GL_TEXTURE_2D, textura[12].texID);
+
+		//1
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 0.0f, 1.0f);
+			glTexCoord2f(0.0f, 0.0f); glVertex3f(334.0f,  0.0f, 80.0f);
+			glTexCoord2f(1.0f, 0.0f); glVertex3f(356.0f,  0.0f, 80.0f);
+			glTexCoord2f(1.0f, 0.5f); glVertex3f(356.0f, 25.0f, 80.0f);
+			glTexCoord2f(0.0f, 0.5f); glVertex3f(334.0f, 25.0f, 80.0f);
+		glEnd();
+
+		//2
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 1.0f, 0.0f);
+			glTexCoord2f(0.0f, 0.5f); glVertex3f(334.0f, 25.0f, 80.0f);
+			glTexCoord2f(1.0f, 0.5f); glVertex3f(356.0f, 25.0f, 80.0f);
+			glTexCoord2f(1.0f, 1.0f); glVertex3f(356.0f, 25.0f, 30.0f);
+			glTexCoord2f(0.0f, 1.0f); glVertex3f(334.0f, 25.0f, 30.0f);
+		glEnd();
+
+		//Edificio 14
+
+		glBindTexture(GL_TEXTURE_2D, textura[13].texID);
+
+		//1
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 0.0f, 1.0f);
+			glTexCoord2f(0.0f, 0.0f); glVertex3f(356.0f,  0.0f, 80.0f);
+			glTexCoord2f(1.0f, 0.0f); glVertex3f(378.0f,  0.0f, 80.0f);
+			glTexCoord2f(1.0f, 0.5f); glVertex3f(378.0f, 25.0f, 80.0f);
+			glTexCoord2f(0.0f, 0.5f); glVertex3f(356.0f, 25.0f, 80.0f);
+		glEnd();
+
+		//2
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 1.0f, 0.0f);
+			glTexCoord2f(0.0f, 0.5f); glVertex3f(356.0f, 25.0f, 80.0f);
+			glTexCoord2f(1.0f, 0.5f); glVertex3f(378.0f, 25.0f, 80.0f);
+			glTexCoord2f(1.0f, 1.0f); glVertex3f(378.0f, 25.0f, 30.0f);
+			glTexCoord2f(0.0f, 1.0f); glVertex3f(356.0f, 25.0f, 30.0f);
+		glEnd();
+
+		//Edificio 15
+
+		glBindTexture(GL_TEXTURE_2D, textura[11].texID);
+
+		//1
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 0.0f, 1.0f);
+			glTexCoord2f(0.0f, 0.0f); glVertex3f(378.0f,  0.0f, 80.0f);
+			glTexCoord2f(1.0f, 0.0f); glVertex3f(400.0f,  0.0f, 80.0f);
+			glTexCoord2f(1.0f, 0.5f); glVertex3f(400.0f, 25.0f, 80.0f);
+			glTexCoord2f(0.0f, 0.5f); glVertex3f(378.0f, 25.0f, 80.0f);
+		glEnd();
+
+		glBindTexture(GL_TEXTURE_2D, textura[13].texID);
+
+		//2
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 1.0f, 0.0f);
+			glTexCoord2f(1.0f, 0.5f); glVertex3f(378.0f, 25.0f, 80.0f);
+			glTexCoord2f(0.0f, 0.5f); glVertex3f(400.0f, 25.0f, 80.0f);
+			glTexCoord2f(0.0f, 1.0f); glVertex3f(400.0f, 25.0f, 30.0f);
+			glTexCoord2f(1.0f, 1.0f); glVertex3f(378.0f, 25.0f, 30.0f);
+		glEnd();
+
+		//Edificio 16
+
+		glBindTexture(GL_TEXTURE_2D, textura[14].texID);
+
+		//1
+		glBegin(GL_QUADS);
+			glNormal3f(1.0f, 0.0f, 0.0f);
+			glTexCoord2f(0.0f, 0.0f); glVertex3f(160.0f,  0.0f, 120.0f);
+			glTexCoord2f(1.0f, 0.0f); glVertex3f(160.0f,  0.0f, 20.0f);
+			glTexCoord2f(1.0f, 1.0f); glVertex3f(160.0f, 40.0f, 20.0f);
+			glTexCoord2f(0.0f, 1.0f); glVertex3f(160.0f, 40.0f, 120.0f);
+		glEnd();
+
+		//Edificio 19
+
+		glBindTexture(GL_TEXTURE_2D, textura[15].texID);
+
+		//1
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 1.0f, 0.0f);
+			glTexCoord2f(0.68f, 1.0f); glVertex3f(100.0f, 40.0f, 170.0f);
+			glTexCoord2f(1.0f,  1.0f); glVertex3f(160.0f, 40.0f, 170.0f);
+			glTexCoord2f(1.0f,  0.0f); glVertex3f(160.0f, 40.0f, 120.0f);
+			glTexCoord2f(0.68f, 0.0f); glVertex3f(100.0f, 40.0f, 120.0f);
+		glEnd();
+
+		//Rampa del camión
+
+		glBindTexture(GL_TEXTURE_2D, textura[22].texID);
+
+		glPushMatrix();
+			glTranslatef(164.0f, 2.8f, 110.0f);
+			glRotatef(-20.0f, 0.0f, 0.0f, 1.0f);
+
+			//1
+			glBegin(GL_QUADS);
+				glNormal3f(0.0f, 1.0f, 0.0f);
+				glTexCoord2f(0.0f, 0.0f); glVertex3f(-4.0f, 4.0f,  10.0f);
+				glTexCoord2f(1.0f, 0.0f); glVertex3f( 4.0f, 4.0f,  10.0f);
+				glTexCoord2f(1.0f, 1.0f); glVertex3f( 4.0f, 4.0f, -10.0f);
+				glTexCoord2f(0.0f, 1.0f); glVertex3f(-4.0f, 4.0f, -10.0f);
+			glEnd();
+
+			//2
+			glBegin(GL_QUADS);
+				glNormal3f(0.0f, 0.0f, 1.0f);
+				glTexCoord2f(0.0f, 0.0f); glVertex3f(-4.0f, 0.0f, 10.0f);
+				glTexCoord2f(1.0f, 0.0f); glVertex3f( 4.0f, 0.0f, 10.0f);
+				glTexCoord2f(1.0f, 0.2f); glVertex3f( 4.0f, 4.0f, 10.0f);
+				glTexCoord2f(0.0f, 0.2f); glVertex3f(-4.0f, 4.0f, 10.0f);
+			glEnd();
+
+			//3
+			glBegin(GL_QUADS);
+				glNormal3f(-1.0f, 0.0f, 0.0f);
+				glTexCoord2f(0.0f, 0.0f); glVertex3f(-4.0f, 0.0f, -10.0f);
+				glTexCoord2f(1.0f, 0.0f); glVertex3f(-4.0f, 0.0f,  10.0f);
+				glTexCoord2f(1.0f, 0.2f); glVertex3f(-4.0f, 4.0f,  10.0f);
+				glTexCoord2f(0.0f, 0.2f); glVertex3f(-4.0f, 4.0f, -10.0f);
+			glEnd();
+
+			//4
+			glBegin(GL_QUADS);
+				glNormal3f(1.0f, 0.0f, 0.0f);
+				glTexCoord2f(0.0f, 0.0f); glVertex3f(4.0f, 0.0f,  10.0f);
+				glTexCoord2f(1.0f, 0.0f); glVertex3f(4.0f, 0.0f, -10.0f);
+				glTexCoord2f(1.0f, 0.2f); glVertex3f(4.0f, 4.0f, -10.0f);
+				glTexCoord2f(0.0f, 0.2f); glVertex3f(4.0f, 4.0f,  10.0f);
+			glEnd();
+
+		glPopMatrix();
+
+		glPushMatrix();
+			glTranslatef(0.0f, 0.0f, -30.0f);
+			glScalef(2.0f, 2.0f, 2.0f);
+			dibujaEdif1();
+		glPopMatrix();
+
+		glPushMatrix();
+			glTranslatef(30.0f, 0.0f, -30.0f);
+			glScalef(2.0f, 2.0f, 2.0f);
+			dibujaEdif2();
+		glPopMatrix();
+
+		glPushMatrix();
+			glTranslatef(60.0f, 0.0f, -30.0f);
+			glScalef(2.0f, 2.0f, 2.0f);
+			dibujaEdif3();
+		glPopMatrix();
+
+
+		glPushMatrix();
+			glTranslatef(0.0f, 0.0f, 0.0f);
+			glScalef(2.0f, 2.0f, 2.0f);
+			dibujaEdifDes1();
+		glPopMatrix();
+
+		glPushMatrix();
+			glTranslatef(30.0f, 0.0f, 0.0f);
+			glScalef(2.0f, 2.0f, 2.0f);
+			dibujaEdifDes2();
+		glPopMatrix();
+
+		glPushMatrix();
+			glTranslatef(60.0f, 0.0f, 0.0f);
+			glScalef(2.0f, 2.0f, 2.0f);
+			dibujaEdifDes3();
+		glPopMatrix();
+
+
+		//Dibujo de los botes de basura
+
+		//Bote 1
+		glPushMatrix();
+			glTranslatef(146.0f, 0.0f, -17.0f);
+			dibujaBote();
+		glPopMatrix();
+
+		//Bote 2
+		glPushMatrix();
+			glTranslatef(163.0f, 0.0f, -117.0f);
+			dibujaBote();
+		glPopMatrix();
+
+		//Bote 3
+		glPushMatrix();
+			glTranslatef(240.0f, 0.0f, -117.0f);
+			dibujaBote();
+		glPopMatrix();
+
+		//Bote 4
+		glPushMatrix();
+			glTranslatef(163.0f, 0.0f, 36.0f);
+			dibujaBote();
+		glPopMatrix();
+
+		//Bote 5
+		glPushMatrix();
+			glTranslatef(163.0f, 0.0f, 44.0f);
+			dibujaBote();
+		glPopMatrix();
+
+		//Bote 6
+		glPushMatrix();
+			glTranslatef(197.0f, 0.0f, 70.0f);
+			dibujaBote();
+		glPopMatrix();
+
+		//Bote 7
+		if(estadoBote == 0)
+		{
+			glPushMatrix();
+				glTranslatef(230.0f, 0.0f, 83.0f);
+				dibujaBote();
+			glPopMatrix();
+		}
+		else if(estadoBote == 2)
+		{
+			if(estadoHoverBoard == 1)
+			{
+				glPushMatrix();
+					glTranslatef(230.0f, 0.0f, 85.0f);
+					dibujaHoverBoard();
+				glPopMatrix();
+			}
+		}
+		
+	}
+	else if(tr == 1)
+	{
+		glBindTexture(GL_TEXTURE_2D, textura[7].texID);
+
+		glEnable(GL_BLEND);
+		//glBlendFunc(GL_SRC_COLOR, GL_ONE_MINUS_SRC_ALPHA);
+		glBlendFunc(GL_ONE, GL_ONE);
+
+		//Plano 7 del edificio 7
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 1.0f, 0.0f);
+			glTexCoord2f(0.0f, 0.0f); glVertex3f(200.0f, 60.0f, -30.0f);
+			glTexCoord2f(1.0f, 0.0f); glVertex3f(250.0f, 60.0f, -30.0f);
+			glTexCoord2f(1.0f, 1.0f); glVertex3f(250.0f, 60.0f, -80.0f);
+			glTexCoord2f(0.0f, 1.0f); glVertex3f(200.0f, 60.0f, -80.0f);
+		glEnd();
+
+		glBindTexture(GL_TEXTURE_2D, textura[15].texID);
+
+		//Plano 2 del edificio 16
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 1.0f, 0.0f);
+			glTexCoord2f(0.7f, 0.0f); glVertex3f(110.0f, 40.0f, 120.0f);
+			glTexCoord2f(1.0f, 0.0f); glVertex3f(160.0f, 40.0f, 120.0f);
+			glTexCoord2f(1.0f, 1.0f); glVertex3f(160.0f, 40.0f, 20.0f);
+			glTexCoord2f(0.7f, 1.0f); glVertex3f(110.0f, 40.0f, 20.0f);
+		glEnd();
+
+		//Plano 1 del edificio 17
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 1.0f, 0.0f);
+			glTexCoord2f(0.0f, 0.0f); glVertex3f(  0.0f, 40.0f, 120.0f);
+			glTexCoord2f(0.7f, 0.0f); glVertex3f(110.0f, 40.0f, 120.0f);
+			glTexCoord2f(0.7f, 1.0f); glVertex3f(110.0f, 40.0f, 20.0f);
+			glTexCoord2f(0.0f, 1.0f); glVertex3f(  0.0f, 40.0f, 20.0f);
+		glEnd();
+
+		//Plano 1 del edificio 18
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f, 1.0f, 0.0f);
+			glTexCoord2f(0.0f, 0.0f); glVertex3f(160.0f, 40.0f, 170.0f);
+			glTexCoord2f(1.0f, 0.0f); glVertex3f(400.0f, 40.0f, 170.0f);
+			glTexCoord2f(1.0f, 1.0f); glVertex3f(400.0f, 40.0f, 120.0f);
+			glTexCoord2f(0.0f, 1.0f); glVertex3f(160.0f, 40.0f, 120.0f);
+		glEnd();
+
+		glDisable(GL_BLEND);
+	}
+
+	glDisable(GL_TEXTURE_2D);
+
+	glPushMatrix();
+		glTranslatef(173.0f+despCamion,5.0f-despCamion*0.5f,110.0f);
+		glRotatef(angCamion, 0.0f, 0.0f, 1.0f);
+		dibujaCamion();
+	glPopMatrix();
+
+	//Reja
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, textura[20].texID);
+
+	glEnable(GL_ALPHA_TEST);
+	glAlphaFunc(GL_GREATER, 0.4f);
+
+	glPushMatrix();
+		glTranslatef(201.0f, 0.0f, 0.0f);
+		glRotatef(angReja, 0.0f, 0.0f, 1.0f);
+		
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f,0.0f,-1.0f);
+			glTexCoord2f(0.0f, 0.0f); glVertex3f(0.0f,  0.0f, 80.0f);
+			glTexCoord2f(1.0f, 0.0f); glVertex3f(0.0f,  0.0f, 120.0f);
+			glTexCoord2f(1.0f, 1.0f); glVertex3f(0.0f, 26.0f, 120.0f);
+			glTexCoord2f(0.0f, 1.0f); glVertex3f(0.0f, 26.0f, 80.0f);
+		glEnd();
+
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f,1.0f,0.0f);
+			glTexCoord2f(0.0f, 0.97f); glVertex3f(0.0f, 26.0f, 80.0f);
+			glTexCoord2f(1.0f, 0.97f); glVertex3f(0.0f, 26.0f, 120.0f);
+			glTexCoord2f(1.0f, 1.0f);  glVertex3f(0.5f, 26.0f, 120.0f);
+			glTexCoord2f(0.0f, 1.0f);  glVertex3f(0.5f, 26.0f, 80.0f);
+		glEnd();
+
+		glBegin(GL_QUADS);
+			glNormal3f(0.0f,0.0f,1.0f);
+			glTexCoord2f(0.0f,  0.0f); glVertex3f(0.0f,  0.0f, 120.0f);
+			glTexCoord2f(0.01f, 0.0f); glVertex3f(0.5f,  0.0f, 120.0f);
+			glTexCoord2f(0.01f, 1.0f); glVertex3f(0.5f, 26.0f, 120.0f);
+			glTexCoord2f(0.0f,  1.0f); glVertex3f(0.0f, 26.0f, 120.0f);
+		glEnd();
+
+	glPopMatrix();
+
+	glDisable(GL_ALPHA_TEST);
+
+	glDisable(GL_TEXTURE_2D);
+}
+
+void dibujaPersonaje()
+{
+	static float altHB=0.0f;
+	static int dirAlt=1;
+
+	glPushMatrix();
+
+		//glTranslatef(player1.PosicionObj.x+Xtor, player1.PosicionObj.y+Ytor, player1.PosicionObj.z+Ztor);
+		glTranslatef(player1modelo.Xtor, player1modelo.Ytor, player1modelo.Ztor);
+		if(estadoHoverBoard == 2)
+			glTranslatef(0.0f, 1.0f+altHB, 0.0f);
+		glRotatef(player1modelo.Angt2, 0.0f, 1.0f, 0.0f);
+		if(estadoHoverBoard < 2)
+			glRotatef(player1modelo.Angt1, 1.0f, 0.0f, 0.0f);
+		if(estadoHoverBoard == 2)
+			glRotatef(altHB*6.0f+angHoverBoard, 0.0f, 0.0f, 1.0f);
+		
+		//Torso
+		g_Load3ds.Render3DSFile(&g_3DModel1c, textureModel1c, 1);
+
+		//Cabeza
+		glPushMatrix();
+			glTranslatef(0.0f, 1.9f ,0.0f);
+			glRotatef(player1modelo.Angc2, 0.0f, 1.0f, 0.0f);
+			glRotatef(player1modelo.Angc1, 1.0f, 0.0f, 0.0f);
+			g_Load3ds.Render3DSFile(&g_3DModel2c, textureModel2c, 1);
+		glPopMatrix();
+
+		//Pierna derecha
+		glPushMatrix();
+			glTranslatef(-0.6f, 0.1f ,0.1f);
+			glRotatef(player1modelo.Angpder, 1.0f, 0.0f, 0.0f);
+			g_Load3ds.Render3DSFile(&g_3DModel3c, textureModel3c, 1);
+
+			//Pie derecho
+			glPushMatrix();
+				glTranslatef(0.07f, -0.85f ,0.0f);
+				glRotatef(player1modelo.Angpd, 1.0f, 0.0f, 0.0f);
+				g_Load3ds.Render3DSFile(&g_3DModel7c, textureModel7c, 1);
+			glPopMatrix();
+
+		glPopMatrix();
+
+		//Pierna izquierda
+		glPushMatrix();
+			glTranslatef(0.6f, 0.1f ,0.1f);
+			glRotatef(player1modelo.Angpizq, 1.0f, 0.0f, 0.0f);
+			g_Load3ds.Render3DSFile(&g_3DModel4c, textureModel4c, 1);
+
+			//Pie izquierdo
+			glPushMatrix();
+				glTranslatef(-0.07f, -0.85f ,0.0f);
+				glRotatef(player1modelo.Angpi, 1.0f, 0.0f, 0.0f);
+				g_Load3ds.Render3DSFile(&g_3DModel7c, textureModel7c, 1);
+			glPopMatrix();
+
+		glPopMatrix();
+
+		//Brazo derecho
+		glPushMatrix();
+			glTranslatef(-0.9f, 1.45f, -0.1f);
+			glRotatef(player1modelo.Angbd2, 0.0f, 0.0f, 1.0f);
+			glRotatef(player1modelo.Angbd1, 1.0f, 0.0f, 0.0f);
+			g_Load3ds.Render3DSFile(&g_3DModel5c, textureModel5c, 1);
+
+		glPopMatrix();
+
+		//Brazo izquierdo
+		glPushMatrix();
+			glTranslatef(0.9f, 1.45f, -0.1f);
+			glRotatef(player1modelo.Angbi2, 0.0f, 0.0f, 1.0f);
+			glRotatef(player1modelo.Angbi1, 1.0f, 0.0f, 0.0f);
+			g_Load3ds.Render3DSFile(&g_3DModel6c, textureModel6c, 1);
+
+		glPopMatrix();
+
+	glPopMatrix();
+
+	if(estadoHoverBoard == 2)
+	{
+		glPushMatrix();
+			glTranslatef(-0.4f, -1.0f+altHB, 0.0f);
+			glRotatef(-90.0f, 0.0f, 1.0f, 0.0f);
+			glRotatef(altHB*6.0f+angHoverBoard, 1.0f, 0.0f, 0.0f);
+			g_Load3ds.Render3DSFile(&g_3DModelTabla, textureModelTabla, 1);
+		glPopMatrix();
+	
+		if(dirAlt == 1)
+		{
+			if(altHB < 0.6f)
+				altHB+=0.01f;
+			else
+				dirAlt=2;
+		}
+		else if(dirAlt == 2)
+		{
+			if(altHB > -0.6f)
+				altHB-=0.01f;
+			else
+				dirAlt=1;
+		}
+	}
+}
+
+void dibujaEnemigo(int tipo)
+{
+	if(tipo == 1)
+	{
+		glPushMatrix();
+
+			glTranslatef(enemigo1modelo.Xtor, enemigo1modelo.Ytor, enemigo1modelo.Ztor);
+			glRotatef(enemigo1modelo.Angt2, 0.0f, 1.0f, 0.0f);
+			glRotatef(enemigo1modelo.Angt1, 1.0f, 0.0f, 0.0f);
+			
+			//Torso
+			g_Load3ds.Render3DSFile(&g_3DModel1e1, textureModel1e1, 1);
+
+			//Cabeza
+			glPushMatrix();
+				glTranslatef(0.0f, 1.7f ,0.0f);
+				glRotatef(enemigo1modelo.Angc2, 0.0f, 1.0f, 0.0f);
+				glRotatef(enemigo1modelo.Angc1, 1.0f, 0.0f, 0.0f);
+				g_Load3ds.Render3DSFile(&g_3DModel2e1, textureModel2e1, 1);
+			glPopMatrix();
+
+			//Pierna derecha
+			glPushMatrix();
+				glTranslatef(-0.6f, 0.1f ,0.1f);
+				glRotatef(enemigo1modelo.Angpder, 1.0f, 0.0f, 0.0f);
+				g_Load3ds.Render3DSFile(&g_3DModel3e1, textureModel3e1, 1);
+
+				//Pie derecho
+				glPushMatrix();
+					glTranslatef(0.07f, -0.85f ,0.0f);
+					glRotatef(enemigo1modelo.Angpd, 1.0f, 0.0f, 0.0f);
+					g_Load3ds.Render3DSFile(&g_3DModel7e1, textureModel7e1, 1);
+				glPopMatrix();
+
+			glPopMatrix();
+
+			//Pierna izquierda
+			glPushMatrix();
+				glTranslatef(0.6f, 0.1f ,0.1f);
+				glRotatef(enemigo1modelo.Angpizq, 1.0f, 0.0f, 0.0f);
+				g_Load3ds.Render3DSFile(&g_3DModel4e1, textureModel4e1, 1);
+
+				//Pie izquierdo
+				glPushMatrix();
+					glTranslatef(-0.07f, -0.85f ,0.0f);
+					glRotatef(enemigo1modelo.Angpi, 1.0f, 0.0f, 0.0f);
+					g_Load3ds.Render3DSFile(&g_3DModel7e1, textureModel7e1, 1);
+				glPopMatrix();
+
+			glPopMatrix();
+
+			//Brazo derecho
+			glPushMatrix();
+				glTranslatef(-0.9f, 1.45f, -0.1f);
+				glRotatef(enemigo1modelo.Angbd2, 0.0f, 0.0f, 1.0f);
+				glRotatef(enemigo1modelo.Angbd1, 1.0f, 0.0f, 0.0f);
+				g_Load3ds.Render3DSFile(&g_3DModel5e1, textureModel5e1, 1);
+
+				//Arma
+				glPushMatrix();
+					glTranslatef(-0.6f, -1.8f, 0.0f);
+					g_Load3ds.Render3DSFile(&g_3DModel8e1, textureModel8e1, 1);
+				glPopMatrix();
+
+			glPopMatrix();
+
+			//Brazo izquierdo
+			glPushMatrix();
+				glTranslatef(0.9f, 1.45f, -0.1f);
+				glRotatef(enemigo1modelo.Angbi2, 0.0f, 0.0f, 1.0f);
+				glRotatef(enemigo1modelo.Angbi1, 1.0f, 0.0f, 0.0f);
+				g_Load3ds.Render3DSFile(&g_3DModel6e1, textureModel6e1, 1);
+
+			glPopMatrix();
+
+		glPopMatrix();
+	}
+	else if(tipo == 2)
+	{
+		glPushMatrix();
+
+			glTranslatef(enemigo2modelo.Xtor, enemigo2modelo.Ytor, enemigo2modelo.Ztor);
+			glRotatef(enemigo2modelo.Angt2, 0.0f, 0.0f, 1.0f);
+			glRotatef(enemigo2modelo.Angt1, 1.0f, 0.0f, 0.0f);
+			
+			//Torso
+			g_Load3ds.Render3DSFile(&g_3DModel1e2, textureModel1e2, 1);
+
+			//Cabeza
+			glPushMatrix();
+				glTranslatef(0.0f, 1.7f ,0.0f);
+				glRotatef(enemigo2modelo.Angc2, 0.0f, 1.0f, 0.0f);
+				glRotatef(enemigo2modelo.Angc1, 1.0f, 0.0f, 0.0f);
+				g_Load3ds.Render3DSFile(&g_3DModel2e2, textureModel2e2, 1);
+			glPopMatrix();
+
+			//Pierna derecha
+			glPushMatrix();
+				glTranslatef(-0.6f, 0.1f ,0.1f);
+				glRotatef(enemigo2modelo.Angpder, 1.0f, 0.0f, 0.0f);
+				g_Load3ds.Render3DSFile(&g_3DModel3e2, textureModel3e2, 1);
+
+				//Pie derecho
+				glPushMatrix();
+					glTranslatef(0.07f, -0.85f ,0.0f);
+					glRotatef(enemigo2modelo.Angpd, 1.0f, 0.0f, 0.0f);
+					g_Load3ds.Render3DSFile(&g_3DModel7e2, textureModel7e2, 1);
+				glPopMatrix();
+
+			glPopMatrix();
+
+			//Pierna izquierda
+			glPushMatrix();
+				glTranslatef(0.6f, 0.1f ,0.1f);
+				glRotatef(enemigo2modelo.Angpizq, 1.0f, 0.0f, 0.0f);
+				g_Load3ds.Render3DSFile(&g_3DModel4e2, textureModel4e2, 1);
+
+				//Pie izquierdo
+				glPushMatrix();
+					glTranslatef(-0.07f, -0.85f ,0.0f);
+					glRotatef(enemigo2modelo.Angpi, 1.0f, 0.0f, 0.0f);
+					g_Load3ds.Render3DSFile(&g_3DModel7e2, textureModel7e2, 1);
+				glPopMatrix();
+
+			glPopMatrix();
+
+			//Brazo derecho
+			glPushMatrix();
+				glTranslatef(-0.9f, 1.45f, -0.1f);
+				glRotatef(enemigo2modelo.Angbd2, 0.0f, 0.0f, 1.0f);
+				glRotatef(enemigo2modelo.Angbd1, 1.0f, 0.0f, 0.0f);
+				g_Load3ds.Render3DSFile(&g_3DModel5e2, textureModel5e2, 1);
+			glPopMatrix();
+
+			//Brazo izquierdo
+			glPushMatrix();
+				glTranslatef(0.9f, 1.45f, -0.1f);
+				glRotatef(enemigo2modelo.Angbi2, 0.0f, 0.0f, 1.0f);
+				glRotatef(enemigo2modelo.Angbi1, 1.0f, 0.0f, 0.0f);
+				g_Load3ds.Render3DSFile(&g_3DModel6e2, textureModel6e2, 1);
+			glPopMatrix();
+
+		glPopMatrix();
+	}
+}
+
+void actualizaLuzParam()
+{
+	glLightfv(GL_LIGHT0, GL_POSITION, LightPos);		// Posicion de la luz0
+	glLightfv(GL_LIGHT0, GL_AMBIENT,  LightAmb);		// Componente ambiente
+	glLightfv(GL_LIGHT0, GL_DIFFUSE,  LightDif);		// Componente difusa
+	glLightfv(GL_LIGHT0, GL_SPECULAR, LightSpc);
+}
+
+int RenderizaEscena(GLvoid)								// Aqui se dibuja todo lo que aparecera en la ventana
+{
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glLoadIdentity();
+	
+	//gluLookAt(80.0f, 120.0f, 170.0f, 0.0f, 0.0f, 0.0f, 0, 1, 0);
+	gluLookAt(player1.PosicionCam.x, player1.PosicionCam.y, player1.PosicionCam.z, player1.ObjetivoCam.x, player1.ObjetivoCam.y, player1.ObjetivoCam.z, 0, 1, 0);
+	actualizaLuzParam();
+	
+	//DibujaEjes();
+	dibujaEscenario(0);
+
+	glPushMatrix();
+		if(estadoHoverBoard < 2)
+			glTranslatef(player1.PosicionObj.x, player1.PosicionObj.y+2.0f, player1.PosicionObj.z);
+		else
+			glTranslatef(player1.PosicionObj.x, player1.PosicionObj.y+5.0f, player1.PosicionObj.z);
+		glRotatef(player1.AngObj, 0.0f, 1.0f, 0.0f);
+		dibujaPersonaje();
+	glPopMatrix();
+
+	if(enemigo1.visible)
+	{
+		glPushMatrix();
+			glTranslatef(enemigo1.PosicionObj.x,enemigo1.PosicionObj.y+2.5f,enemigo1.PosicionObj.z);
+			glRotatef(enemigo1.AngObj,ejeRotEnemigo1.x,ejeRotEnemigo1.y,ejeRotEnemigo1.z);
+			glScalef(enemigo1.escalaX,enemigo1.escalaY,enemigo1.escalaZ);
+			dibujaEnemigo(1);
+		glPopMatrix();
+	}
+
+	if(enemigo2.visible)
+	{
+		glPushMatrix();
+			glTranslatef(enemigo2.PosicionObj.x,enemigo2.PosicionObj.y+2.0f,enemigo2.PosicionObj.z);
+			glRotatef(enemigo2.AngObj,ejeRotEnemigo2.x,ejeRotEnemigo2.y,ejeRotEnemigo2.z);
+			glScalef(enemigo2.escalaX,enemigo2.escalaY,enemigo2.escalaZ);
+			dibujaEnemigo(2);
+		glPopMatrix();
+	}
+
+	if(enemigo3.visible)
+	{
+		glPushMatrix();
+			glTranslatef(enemigo3.PosicionObj.x,enemigo3.PosicionObj.y+2.0f,enemigo3.PosicionObj.z);
+			glRotatef(enemigo3.AngObj,ejeRotEnemigo3.x,ejeRotEnemigo3.y,ejeRotEnemigo3.z);
+			glScalef(enemigo3.escalaX,enemigo3.escalaY,enemigo3.escalaZ);
+			dibujaEnemigo(2);
+		glPopMatrix();
+	}
+
+	if(estadoBote == 1)
+		dibujaPolvoBote();
+
+	//Los planos con transparencia se deben dibujar hasta el final
+	dibujaEscenario(1);
+
+	actualizaEstadoCamion();
+	actualizaEstadoReja();
+
+	if(player1.golpeando)
+	{
+		colisionBotePersonaje();
+		colisionCamionPersonaje();
+		if(!varsAnimP1.play)
+			player1.golpeando=false;
+	}
+
+	if(estadoHoverBoard == 1)
+		colisionTablaPersonaje();
+
+	controlEnemigo(1);
+	controlEnemigo(2);
+	controlEnemigo(3);
+					
+	return TRUE;
+}
+
+GLvoid DestruyeVentanaOGL(GLvoid)						// Elimina la ventana apropiadamente
+{
+	if (hRC)											// Si existe un contexto de renderizado...
+	{
+		if (!wglMakeCurrent(NULL,NULL))					// Si no se pueden liberar los contextos DC y RC...
+		{
+			MessageBox(NULL,"Falla al liberar DC y RC.","Error de finalización",MB_OK | MB_ICONINFORMATION);
+		}
+
+		if (!wglDeleteContext(hRC))						// Si no se puede eliminar el RC?
+		{
+			MessageBox(NULL,"Falla al liberar el contexto de renderizado.","Error de finalización",MB_OK | MB_ICONINFORMATION);
+		}
+		hRC=NULL;										// Se pone RC en NULL
+	}
+
+	if (hDC && !ReleaseDC(hWnd,hDC))					// Si no se puede eliminar el DC
+	{
+		MessageBox(NULL,"Falla al liberar el contexto de renderizado.","Error de finalización",MB_OK | MB_ICONINFORMATION);
+		hDC=NULL;										// Se pone DC en NULL
+	}
+
+	if (hWnd && !DestroyWindow(hWnd))					// Si no se puede destruir la ventana
+	{
+		MessageBox(NULL,"No se pudo liberar hWnd.","Error de finalización",MB_OK | MB_ICONINFORMATION);
+		hWnd=NULL;										// Se pone hWnd en NULL
+	}
+
+	if (!UnregisterClass("OpenGL",hInstance))			// Si no se puede eliminar el registro de la clase
+	{
+		MessageBox(NULL,"No se pudo eliminar el registro de la clase.","Error de finalización",MB_OK | MB_ICONINFORMATION);
+		hInstance=NULL;									// Se pone hInstance en NULL
+	}
+}
+
+//	Este código crea la ventana de OpenGL.  Parámetros:					
+//	title			- Titulo en la parte superior de la ventana			
+//	width			- Ancho de la ventana								
+//	height			- Alto de la ventana								
+//	bits			- Número de bits a usar para el color (8/16/24/32)	
+  
+BOOL CreaVentanaOGL(char* title, int width, int height, int bits)
+{
+	GLuint	PixelFormat;				// Guarda el resultado despues de determinar el formato a usar
+	WNDCLASS	wc;						// Estructura de la clase ventana
+	DWORD		dwExStyle;				// Estilo extendido de ventana
+	DWORD		dwStyle;				// Estilo de ventana
+	RECT		WindowRect;				// Guarda los valores Superior Izquierdo / Inferior Derecho del rectángulo
+	WindowRect.left=(long)0;			// Inicia el valor Izquierdo a 0
+	WindowRect.right=(long)width;		// Inicia el valor Derecho al ancho especificado
+	WindowRect.top=(long)0;				// Inicia el valor Superior a 0
+	WindowRect.bottom=(long)height;		// Inicia el valor Inferior al alto especificado
+
+	hInstance			= GetModuleHandle(NULL);				// Guarda una instancia de la ventana
+	wc.style			= CS_HREDRAW | CS_VREDRAW | CS_OWNDC;	// Redibuja el contenido de la ventana al redimensionarla
+	wc.lpfnWndProc		= (WNDPROC) WndProc;					// Maneja los mensajes para WndProc
+	wc.cbClsExtra		= 0;									// Ningun dato extra para la clase
+	wc.cbWndExtra		= 0;									// Ningun dato extra para la ventana
+	wc.hInstance		= hInstance;							// Inicia la instancia
+	wc.hIcon			= LoadIcon(NULL, IDI_WINLOGO);			// Carga el ícono por defecto
+	wc.hCursor			= LoadCursor(NULL, IDC_ARROW);			// Carga el puntero de flecha
+	wc.hbrBackground	= NULL;									// No se requiere ningun fondo
+	wc.lpszMenuName		= NULL;									// No hay menú en la ventana
+	wc.lpszClassName	= "OpenGL";								// Fija el nombre de la clase.
+
+	if (!RegisterClass(&wc))									// Intenta registrar la clase de ventana
+	{
+		MessageBox(NULL,"Failed To Register The Window Class.","ERROR",MB_OK|MB_ICONEXCLAMATION);
+		return FALSE;											
+	}
+		
+	dwExStyle=WS_EX_APPWINDOW | WS_EX_WINDOWEDGE;					// Estilo extendido de ventana
+	dwStyle=WS_OVERLAPPEDWINDOW;									// Estilo de ventana
+
+	AdjustWindowRectEx(&WindowRect, dwStyle, FALSE, dwExStyle);		// Ajusta la ventana al tamaño especificado
+
+	// Crea la ventana
+	if (!(hWnd=CreateWindowEx(	dwExStyle,							// Estilo extendido para la ventana
+								"OpenGL",							// Nombre de la clase
+								title,								// Título de la ventana
+								dwStyle |							// Definición del estilo de la ventana
+								WS_CLIPSIBLINGS |					// Estilo requerido de la ventana
+								WS_CLIPCHILDREN,					// Estilo requerido de la ventana
+								0, 0,								// Posición de la ventana
+								WindowRect.right-WindowRect.left,	// Calcula el ancho de la ventana
+								WindowRect.bottom-WindowRect.top,	// Calcula el alto de la ventana
+								NULL,								// No hay ventana superior
+								NULL,								// No hay menú
+								hInstance,							// Instancia
+								NULL)))								// No se pasa nada a WM_CREATE
+	{
+		DestruyeVentanaOGL();										// Resetea el despliegue
+		MessageBox(NULL,"Error al crear la ventana.","ERROR",MB_OK|MB_ICONEXCLAMATION);
+		return FALSE;								
+	}
+
+	static	PIXELFORMATDESCRIPTOR pfd=				// pfd Tells Windows How We Want Things To Be
+	{
+		sizeof(PIXELFORMATDESCRIPTOR),				// Size Of This Pixel Format Descriptor
+		1,											// Version Number
+		PFD_DRAW_TO_WINDOW |						// Format Must Support Window
+		PFD_SUPPORT_OPENGL |						// Format Must Support OpenGL
+		PFD_DOUBLEBUFFER,							// Must Support Double Buffering
+		PFD_TYPE_RGBA,								// Request An RGBA Format
+		bits,										// Select Our Color Depth
+		0, 0, 0, 0, 0, 0,							// Color Bits Ignored
+		0,											// No Alpha Buffer
+		0,											// Shift Bit Ignored
+		0,											// No Accumulation Buffer
+		0, 0, 0, 0,									// Accumulation Bits Ignored
+		16,											// 16Bit Z-Buffer (Depth Buffer)  
+		0,											// No Stencil Buffer
+		0,											// No Auxiliary Buffer
+		PFD_MAIN_PLANE,								// Main Drawing Layer
+		0,											// Reserved
+		0, 0, 0										// Layer Masks Ignored
+	};
+	
+	if (!(hDC=GetDC(hWnd)))							// Si no se creo el contexto de dispositivo...
+	{
+		DestruyeVentanaOGL();						// Resetea el despliegue
+		MessageBox(NULL,"No se puede crear un contexto de dispositivo GL.","ERROR",MB_OK|MB_ICONEXCLAMATION);
+		return FALSE;								
+	}
+
+	if (!(PixelFormat=ChoosePixelFormat(hDC,&pfd)))	// Si Windows no encontró un formato de pixel compatible
+	{
+		DestruyeVentanaOGL();						// Resetea el despliegue
+		MessageBox(NULL,"No se puede encontrar un formato de pixel compatible.","ERROR",MB_OK|MB_ICONEXCLAMATION);
+		return FALSE;								
+	}
+
+	if(!SetPixelFormat(hDC,PixelFormat,&pfd))		// Si no se pudo habilitar el formato de pixel
+	{
+		DestruyeVentanaOGL();						// Resetea el despliegue
+		MessageBox(NULL,"No se puede usar el formato de pixel.","ERROR",MB_OK|MB_ICONEXCLAMATION);
+		return FALSE;								
+	}
+
+	if (!(hRC=wglCreateContext(hDC)))				// Si no se creo el contexto de renderizado
+	{
+		DestruyeVentanaOGL();						// Resetea el despliegue
+		MessageBox(NULL,"No se puede crear un contexto de renderizado GL.","ERROR",MB_OK|MB_ICONEXCLAMATION);
+		return FALSE;								
+	}
+
+	if(!wglMakeCurrent(hDC,hRC))					// Si no se puede activar el contexto de renderizado
+	{
+		DestruyeVentanaOGL();						// Resetea el despliegue
+		MessageBox(NULL,"No se puede usar el contexto de renderizado GL.","ERROR",MB_OK|MB_ICONEXCLAMATION);
+		return FALSE;								
+	}
+
+	ShowWindow(hWnd,SW_SHOW);				// Muestra la ventana
+	SetForegroundWindow(hWnd);				// Le da la prioridad mas alta
+	SetFocus(hWnd);							// Pasa el foco del teclado a la ventana
+	ReDimensionaEscenaGL(width, height);	// Inicia la perspectiva para la ventana OGL
+
+	if (!IniGL())							// Si no se inicializa la ventana creada
+	{
+		DestruyeVentanaOGL();				// Resetea el despliegue
+		MessageBox(NULL,"Falla en la inicialización.","ERROR",MB_OK|MB_ICONEXCLAMATION);
+		return FALSE;								
+	}
+
+	return TRUE;							// Todo correcto
+}
+
+LRESULT CALLBACK WndProc(	HWND	hWnd,	// Manejador para esta ventana
+							UINT	uMsg,	// Mensaje para esta ventana
+							WPARAM	wParam,	// Información adicional del mensaje
+							LPARAM	lParam)	// Información adicional del mensaje
+{
+	switch (uMsg)							// Revisa los mensajes de la ventana
+	{
+		case WM_ACTIVATE:					// Revisa el mensaje de activación de ventana
+		{
+			if (!HIWORD(wParam))			// Revisa el estado de minimización
+			{
+				active=TRUE;				// El programa está activo
+			}
+			else
+			{
+				active=FALSE;				// El programa no está activo
+			}
+
+			return 0;						// Regresa al ciclo de mensajes
+		}
+
+		case WM_SYSCOMMAND:					// Intercepta comandos del sistema
+		{
+			switch (wParam)					// Revisa llamadas del sistema
+			{
+				case SC_SCREENSAVE:			// ¿Screensaver tratando de iniciar?
+				case SC_MONITORPOWER:		// ¿Monitor tratando de entrar a modo de ahorro de energía?
+				return 0;					// Evita que suceda
+			}
+			break;							// Sale del caso
+		}
+
+		case WM_CLOSE:						// Si se recibe un mensaje de cerrar...
+		{
+			PostQuitMessage(0);				// Se manda el mensaje de salida
+			return 0;						// y se regresa al ciclo
+		}
+
+		case WM_KEYDOWN:					// Si se está presionando una tecla...
+		{
+			keys[wParam] = TRUE;			// Si es así, se marca como TRUE
+			return 0;						// y se regresa al ciclo
+		}
+
+		case WM_KEYUP:						// ¿Se ha soltado una tecla?
+		{
+			keys[wParam] = FALSE;			// Si es así, se marca como FALSE
+			return 0;						// y se regresa al ciclo
+		}
+
+		case WM_SIZE:						// Si se redimensiona la ventana...
+		{
+			ReDimensionaEscenaGL(LOWORD(lParam),HIWORD(lParam));  	// LoWord=Width, HiWord=Height
+			return 0;						// y se regresa al ciclo
+		}
+	}
+
+	// Pasa todos los mensajes no considerados a DefWindowProc
+	return DefWindowProc(hWnd,uMsg,wParam,lParam);
+}
+
+// Este es el punto de entrada al programa; la función principal 
+int WINAPI WinMain(	HINSTANCE	hInstance,			// Instancia
+					HINSTANCE	hPrevInstance,		// Instancia previa
+					LPSTR		lpCmdLine,			// Parametros de la linea de comandos
+					int			nCmdShow)			// Muestra el estado de la ventana
+{
+	MSG		msg;									// Estructura de mensajes de la ventana
+	BOOL	done=FALSE;								// Variable booleana para salir del ciclo
+
+	FMOD_SYSTEM      *system;
+	FMOD_RESULT       result;
+	unsigned int      version;
+
+	unsigned int ms = 0;
+    unsigned int lenms = 0;
+	int          playing = 0;
+	int          paused = 0;
+	int          channelsplaying = 0;
+
+	// Crea la ventana OpenGL
+	if (!CreaVentanaOGL("Computación Gráfica",640,480,16))
+	{
+		return 0;									// Salir del programa si la ventana no fue creada
+	}
+
+	//Se inicia el sistema de sonido de FMOD
+    result = FMOD_System_Create(&system);
+    ERRCHECK(result);
+
+    result = FMOD_System_GetVersion(system, &version);
+    ERRCHECK(result);
+
+    if (version < FMOD_VERSION)
+    {
+        printf("Error!  You are using an old version of FMOD %08x.  This program requires %08x\n", version, FMOD_VERSION);
+        return 0;
+    }
+
+    result = FMOD_System_Init(system, 32, FMOD_INIT_NORMAL, NULL);
+    ERRCHECK(result);
+
+    result = FMOD_System_CreateSound(system, "audio/bgm1.mp3", FMOD_HARDWARE, 0, &sound[0]);
+    ERRCHECK(result);
+
+    result = FMOD_Sound_SetMode(sound[0], FMOD_LOOP_NORMAL); //se repite constantemente durante la reproducción
+    ERRCHECK(result);
+
+    result = FMOD_System_CreateSound(system, "audio/sting.mp3", FMOD_SOFTWARE, 0, &sound[1]);
+    ERRCHECK(result);
+
+	result = FMOD_System_CreateSound(system, "audio/bgm2.mp3", FMOD_SOFTWARE, 0, &sound[2]);
+    ERRCHECK(result);
+
+	result = FMOD_Sound_SetMode(sound[2], FMOD_LOOP_NORMAL); //se repite constantemente durante la reproducción
+    ERRCHECK(result);
+
+	result = FMOD_System_CreateSound(system, "audio/hover.mp3", FMOD_SOFTWARE, 0, &sound[3]);
+    ERRCHECK(result);
+
+	result = FMOD_Sound_SetMode(sound[3], FMOD_LOOP_NORMAL); //se repite constantemente durante la reproducción
+    ERRCHECK(result);
+
+	result = FMOD_System_CreateSound(system, "audio/hover2.mp3", FMOD_SOFTWARE, 0, &sound[4]);
+    ERRCHECK(result);
+
+	result = FMOD_Sound_SetMode(sound[4], FMOD_LOOP_NORMAL); //se repite constantemente durante la reproducción
+    ERRCHECK(result);
+
+	result = FMOD_System_CreateSound(system, "audio/hover3.mp3", FMOD_SOFTWARE, 0, &sound[5]);
+    ERRCHECK(result);
+
+	 //Se asocian los sonidos a los canales	
+    result = FMOD_System_PlaySound(system, FMOD_CHANNEL_FREE, sound[0], 0, &channel[0]);
+    ERRCHECK(result);
+    result = FMOD_Channel_SetPaused(channel[0], FALSE); //al iniciar el programa comenzará la reproducción
+    ERRCHECK(result);
+
+    result = FMOD_System_PlaySound(system, FMOD_CHANNEL_FREE, sound[1], 0, &channel[1]);
+    ERRCHECK(result);
+    result = FMOD_Channel_SetPaused(channel[1], TRUE); //sonido 2 inicialmente en pausa
+    ERRCHECK(result);
+
+	result = FMOD_System_PlaySound(system, FMOD_CHANNEL_FREE, sound[2], 0, &channel[2]);
+    ERRCHECK(result);
+    result = FMOD_Channel_SetPaused(channel[2], TRUE); //sonido 2 inicialmente en pausa
+    ERRCHECK(result);
+
+	result = FMOD_System_PlaySound(system, FMOD_CHANNEL_FREE, sound[3], 0, &channel[3]);
+    ERRCHECK(result);
+    result = FMOD_Channel_SetPaused(channel[3], TRUE); //sonido 2 inicialmente en pausa
+    ERRCHECK(result);
+
+	result = FMOD_System_PlaySound(system, FMOD_CHANNEL_FREE, sound[4], 0, &channel[4]);
+    ERRCHECK(result);
+    result = FMOD_Channel_SetPaused(channel[4], TRUE); //sonido 2 inicialmente en pausa
+    ERRCHECK(result);
+
+	result = FMOD_System_PlaySound(system, FMOD_CHANNEL_FREE, sound[5], 0, &channel[5]);
+    ERRCHECK(result);
+    result = FMOD_Channel_SetPaused(channel[5], TRUE); //sonido 2 inicialmente en pausa
+    ERRCHECK(result);
+
+	while(!done)									// Mientras done=FALSE
+	{
+		if (PeekMessage(&msg,NULL,0,0,PM_REMOVE))	// Revisa si hay mensajes en espera
+		{
+			if (msg.message==WM_QUIT)				// Si se ha recibido el mensje de salir...
+			{
+				done=TRUE;							// Entonces done=TRUE
+			}
+			else									// Si no, Procesa los mensajes de la ventana
+			{
+				TranslateMessage(&msg);				// Traduce el mensaje
+				DispatchMessage(&msg);				// Envia el mensaje
+			}
+		}
+		else										// Si no hay mensajes...
+		{
+			// Dibuja la escena. 
+			if (active)								// Si está activo el programa...
+			{
+				if (keys[VK_ESCAPE])				// Si se ha presionado ESC
+				{
+					done=TRUE;						// ESC indica el termino del programa
+				}
+				else								// De lo contrario, actualiza la pantalla
+				{
+					FMOD_System_Update(system);
+					RenderizaEscena();				// Dibuja la escena
+					SwapBuffers(hDC);				// Intercambia los Buffers (Double Buffering)
+
+					//Animación del personaje
+					if(varsAnimP1.play)
+					{
+						if(varsAnimP1.tipoAnim == 1) //caminar
+							animacion(&player1modelo, KeyFrame1p1, maxKF1 , 15, &varsAnimP1);
+						else if(varsAnimP1.tipoAnim == 2) //patada
+							animacion(&player1modelo, KeyFrame2p1, maxKF2 , 8, &varsAnimP1);
+						else if(varsAnimP1.tipoAnim == 3) //en patineta dir
+							animacion(&player1modelo, KeyFrame3p1, maxKF3 , 18, &varsAnimP1);
+					}
+
+					//Animación del enemigo 1
+					if(varsAnimE1.play==false)
+					{
+						varsAnimE1.play=true;
+						
+						enemigo1modelo.Angt1   = KeyFrame1e1[0].Angt1;
+						enemigo1modelo.Angt2   = KeyFrame1e1[0].Angt2;
+						enemigo1modelo.Angc1   = KeyFrame1e1[0].Angc1;
+						enemigo1modelo.Angc2   = KeyFrame1e1[0].Angc2;
+						enemigo1modelo.Angbi1  = KeyFrame1e1[0].Angbi1;
+						enemigo1modelo.Angbi2  = KeyFrame1e1[0].Angbi2;
+						enemigo1modelo.Angbd1  = KeyFrame1e1[0].Angbd1;
+						enemigo1modelo.Angbd2  = KeyFrame1e1[0].Angbd2;
+						enemigo1modelo.Angpizq = KeyFrame1e1[0].Angpizq;
+						enemigo1modelo.Angpder = KeyFrame1e1[0].Angpder;
+						enemigo1modelo.Angpi   = KeyFrame1e1[0].Angpi;
+						enemigo1modelo.Angpd   = KeyFrame1e1[0].Angpd;
+						enemigo1modelo.Xtor    = KeyFrame1e1[0].Xtor;
+						enemigo1modelo.Ytor    = KeyFrame1e1[0].Ytor;
+						enemigo1modelo.Ztor    = KeyFrame1e1[0].Ztor;
+					}
+
+					animacion(&enemigo1modelo, KeyFrame1e1, maxKF1 , 20, &varsAnimE1);
+					
+					//Animación del enemigo 2
+					if(varsAnimE2.play==false)
+					{
+						varsAnimE2.play=true;
+
+						enemigo2modelo.Angt1   = KeyFrame1e2[0].Angt1;
+						enemigo2modelo.Angt2   = KeyFrame1e2[0].Angt2;
+						enemigo2modelo.Angc1   = KeyFrame1e2[0].Angc1;
+						enemigo2modelo.Angc2   = KeyFrame1e2[0].Angc2;
+						enemigo2modelo.Angbi1  = KeyFrame1e2[0].Angbi1;
+						enemigo2modelo.Angbi2  = KeyFrame1e2[0].Angbi2;
+						enemigo2modelo.Angbd1  = KeyFrame1e2[0].Angbd1;
+						enemigo2modelo.Angbd2  = KeyFrame1e2[0].Angbd2;
+						enemigo2modelo.Angpizq = KeyFrame1e2[0].Angpizq;
+						enemigo2modelo.Angpder = KeyFrame1e2[0].Angpder;
+						enemigo2modelo.Angpi   = KeyFrame1e2[0].Angpi;
+						enemigo2modelo.Angpd   = KeyFrame1e2[0].Angpd;
+						enemigo2modelo.Xtor    = KeyFrame1e2[0].Xtor;
+						enemigo2modelo.Ytor    = KeyFrame1e2[0].Ytor;
+						enemigo2modelo.Ztor    = KeyFrame1e2[0].Ztor;
+					}
+
+					animacion(&enemigo2modelo, KeyFrame1e2, maxKF1 , 24, &varsAnimE2);
+
+					if(estadoHoverBoard == 1)
+						FMOD_Channel_SetPaused(channel[3], FALSE);
+					else if(estadoHoverBoard == 2)
+					{
+						FMOD_Channel_SetPaused(channel[0], TRUE);
+						FMOD_Channel_SetPaused(channel[2], FALSE);
+						FMOD_Channel_SetPaused(channel[3], TRUE);
+						FMOD_Channel_SetPaused(channel[4], FALSE);
+					}
+
+					if(player1.PosicionObj.x < 200.0f && player1.PosicionObj.z > 85.0f)
+						FMOD_Channel_SetPaused(channel[1], FALSE);
+
+					if(estadoHoverBoard == 2 && angHoverBoard > 0.0f && sonidoHoverBoard == 0)
+					{
+						FMOD_Channel_Stop(channel[5]);
+						FMOD_System_PlaySound(system, FMOD_CHANNEL_FREE, sound[5], 0, &channel[5]);
+						sonidoHoverBoard=1;
+					}
+				}
+
+				if(!ManejaTeclado()) return 0;
+			}
+			
+		}
+	}
+
+	// Finalización del programa
+	descargaTexturas();
+	DescargaModelos();
+	LiberaSonido(system, result);
+	DestruyeVentanaOGL();							// Destruye la ventana
+	return (msg.wParam);							// Sale del programa
+}
+
+int ManejaTeclado()
+{
+	//Al presionar cualquiera de las teclas de dirección se iniciará la animación de caminar
+	//Al soltar la tecla presionada se detiene la animación.
+	if(GetKeyState(VK_UP) & 0x80) //Si está presionada la tecla UP
+	{
+		if(!player1.golpeando)
+		{
+			teclaUp=1;
+			player1.caminando=true;
+			controlPersonaje(4);
+				
+			if(estadoHoverBoard < 2)
+			{
+				if(varsAnimP1.tipoAnim != 2 && varsAnimP1.play==false) //Para que la asignación de valores siguiente solo se haga una vez y empiece la animación
+				{
+					//Se le asignan a las variables del personaje los 
+					//valores almacenados en el primer keyframe para que
+					//inicie desde ahí la animación.
+					player1modelo.Angt1   = KeyFrame1p1[0].Angt1;
+					player1modelo.Angt2   = KeyFrame1p1[0].Angt2;
+					player1modelo.Angc1   = KeyFrame1p1[0].Angc1;
+					player1modelo.Angc2   = KeyFrame1p1[0].Angc2;
+					player1modelo.Angbi1  = KeyFrame1p1[0].Angbi1;
+					player1modelo.Angbi2  = KeyFrame1p1[0].Angbi2;
+					player1modelo.Angbd1  = KeyFrame1p1[0].Angbd1;
+					player1modelo.Angbd2  = KeyFrame1p1[0].Angbd2;
+					player1modelo.Angpizq = KeyFrame1p1[0].Angpizq;
+					player1modelo.Angpder = KeyFrame1p1[0].Angpder;
+					player1modelo.Angpi   = KeyFrame1p1[0].Angpi;
+					player1modelo.Angpd   = KeyFrame1p1[0].Angpd;
+					player1modelo.Xtor    = KeyFrame1p1[0].Xtor;
+					player1modelo.Ytor    = KeyFrame1p1[0].Ytor;
+					player1modelo.Ztor    = KeyFrame1p1[0].Ztor;
+
+					varsAnimP1.play=true;
+					varsAnimP1.playIndex=0;
+					varsAnimP1.tipoAnim=1;
+				}
+			}
+			else
+			{
+				if(varsAnimP1.play==false) //Para que la asignación de valores siguiente solo se haga una vez y empiece la animación
+				{
+					//Se le asignan a las variables del personaje los 
+					//valores almacenados en el primer keyframe para que
+					//inicie desde ahí la animación.
+					player1modelo.Angt1   = KeyFrame3p1[0].Angt1;
+					player1modelo.Angt2   = KeyFrame3p1[0].Angt2;
+					player1modelo.Angc1   = KeyFrame3p1[0].Angc1;
+					player1modelo.Angc2   = KeyFrame3p1[0].Angc2;
+					player1modelo.Angbi1  = KeyFrame3p1[0].Angbi1;
+					player1modelo.Angbi2  = KeyFrame3p1[0].Angbi2;
+					player1modelo.Angbd1  = KeyFrame3p1[0].Angbd1;
+					player1modelo.Angbd2  = KeyFrame3p1[0].Angbd2;
+					player1modelo.Angpizq = KeyFrame3p1[0].Angpizq;
+					player1modelo.Angpder = KeyFrame3p1[0].Angpder;
+					player1modelo.Angpi   = KeyFrame3p1[0].Angpi;
+					player1modelo.Angpd   = KeyFrame3p1[0].Angpd;
+					player1modelo.Xtor    = KeyFrame3p1[0].Xtor;
+					player1modelo.Ytor    = KeyFrame3p1[0].Ytor;
+					player1modelo.Ztor    = KeyFrame3p1[0].Ztor;
+
+					varsAnimP1.play=true;
+					varsAnimP1.playIndex=0;
+					varsAnimP1.tipoAnim=3;
+				}
+			}
+		}
+	}
+	else
+		teclaUp=0;
+			
+	if(GetKeyState(VK_DOWN) & 0x80) //Si está presionada la tecla DOWN
+	{
+		if(!player1.golpeando)
+		{
+			teclaDn=1;
+			player1.caminando=true;
+			controlPersonaje(3);
+					
+			if(estadoHoverBoard < 2)
+			{
+				if(varsAnimP1.tipoAnim != 2 && varsAnimP1.play==false) //Para que la asignación de valores siguiente solo se haga una vez y empiece la animación
+				{
+					//Se le asignan a las variables del personaje los 
+					//valores almacenados en el primer keyframe para que
+					//inicie desde ahí la animación.
+					player1modelo.Angt1   = KeyFrame1p1[0].Angt1;
+					player1modelo.Angt2   = KeyFrame1p1[0].Angt2;
+					player1modelo.Angc1   = KeyFrame1p1[0].Angc1;
+					player1modelo.Angc2   = KeyFrame1p1[0].Angc2;
+					player1modelo.Angbi1  = KeyFrame1p1[0].Angbi1;
+					player1modelo.Angbi2  = KeyFrame1p1[0].Angbi2;
+					player1modelo.Angbd1  = KeyFrame1p1[0].Angbd1;
+					player1modelo.Angbd2  = KeyFrame1p1[0].Angbd2;
+					player1modelo.Angpizq = KeyFrame1p1[0].Angpizq;
+					player1modelo.Angpder = KeyFrame1p1[0].Angpder;
+					player1modelo.Angpi   = KeyFrame1p1[0].Angpi;
+					player1modelo.Angpd   = KeyFrame1p1[0].Angpd;
+					player1modelo.Xtor    = KeyFrame1p1[0].Xtor;
+					player1modelo.Ytor    = KeyFrame1p1[0].Ytor;
+					player1modelo.Ztor    = KeyFrame1p1[0].Ztor;
+
+					varsAnimP1.play=true;
+					varsAnimP1.playIndex=0;
+					varsAnimP1.tipoAnim=1;
+				}
+			}
+			else
+			{
+				if(varsAnimP1.play==false) //Para que la asignación de valores siguiente solo se haga una vez y empiece la animación
+				{
+					//Se le asignan a las variables del personaje los 
+					//valores almacenados en el primer keyframe para que
+					//inicie desde ahí la animación.
+					player1modelo.Angt1   = KeyFrame3p1[0].Angt1;
+					player1modelo.Angt2   = KeyFrame3p1[0].Angt2;
+					player1modelo.Angc1   = KeyFrame3p1[0].Angc1;
+					player1modelo.Angc2   = KeyFrame3p1[0].Angc2;
+					player1modelo.Angbi1  = KeyFrame3p1[0].Angbi1;
+					player1modelo.Angbi2  = KeyFrame3p1[0].Angbi2;
+					player1modelo.Angbd1  = KeyFrame3p1[0].Angbd1;
+					player1modelo.Angbd2  = KeyFrame3p1[0].Angbd2;
+					player1modelo.Angpizq = KeyFrame3p1[0].Angpizq;
+					player1modelo.Angpder = KeyFrame3p1[0].Angpder;
+					player1modelo.Angpi   = KeyFrame3p1[0].Angpi;
+					player1modelo.Angpd   = KeyFrame3p1[0].Angpd;
+					player1modelo.Xtor    = KeyFrame3p1[0].Xtor;
+					player1modelo.Ytor    = KeyFrame3p1[0].Ytor;
+					player1modelo.Ztor    = KeyFrame3p1[0].Ztor;
+
+					varsAnimP1.play=true;
+					varsAnimP1.playIndex=0;
+					varsAnimP1.tipoAnim=3;
+				}
+			}
+		}
+	}
+	else
+		teclaDn=0;
+		
+	if(GetKeyState(VK_LEFT) & 0x80) //Si está presionada la tecla LEFT
+	{
+		if(!player1.golpeando)
+		{
+			teclaLt=1;
+			player1.caminando=true;
+			controlPersonaje(2);
+				
+			if(estadoHoverBoard < 2)
+			{
+				if(varsAnimP1.tipoAnim != 2 && varsAnimP1.play==false) //Para que la asignación de valores siguiente solo se haga una vez y empiece la animación
+				{
+					//Se le asignan a las variables del personaje los 
+					//valores almacenados en el primer keyframe para que
+					//inicie desde ahí la animación.
+					player1modelo.Angt1   = KeyFrame1p1[0].Angt1;
+					player1modelo.Angt2   = KeyFrame1p1[0].Angt2;
+					player1modelo.Angc1   = KeyFrame1p1[0].Angc1;
+					player1modelo.Angc2   = KeyFrame1p1[0].Angc2;
+					player1modelo.Angbi1  = KeyFrame1p1[0].Angbi1;
+					player1modelo.Angbi2  = KeyFrame1p1[0].Angbi2;
+					player1modelo.Angbd1  = KeyFrame1p1[0].Angbd1;
+					player1modelo.Angbd2  = KeyFrame1p1[0].Angbd2;
+					player1modelo.Angpizq = KeyFrame1p1[0].Angpizq;
+					player1modelo.Angpder = KeyFrame1p1[0].Angpder;
+					player1modelo.Angpi   = KeyFrame1p1[0].Angpi;
+					player1modelo.Angpd   = KeyFrame1p1[0].Angpd;
+					player1modelo.Xtor    = KeyFrame1p1[0].Xtor;
+					player1modelo.Ytor    = KeyFrame1p1[0].Ytor;
+					player1modelo.Ztor    = KeyFrame1p1[0].Ztor;
+
+					varsAnimP1.play=true;
+					varsAnimP1.playIndex=0;
+					varsAnimP1.tipoAnim=1;
+				}
+			}
+			else
+			{
+				if(varsAnimP1.play==false) //Para que la asignación de valores siguiente solo se haga una vez y empiece la animación
+				{
+					//Se le asignan a las variables del personaje los 
+					//valores almacenados en el primer keyframe para que
+					//inicie desde ahí la animación.
+					player1modelo.Angt1   = KeyFrame3p1[0].Angt1;
+					player1modelo.Angt2   = KeyFrame3p1[0].Angt2;
+					player1modelo.Angc1   = KeyFrame3p1[0].Angc1;
+					player1modelo.Angc2   = KeyFrame3p1[0].Angc2;
+					player1modelo.Angbi1  = KeyFrame3p1[0].Angbi1;
+					player1modelo.Angbi2  = KeyFrame3p1[0].Angbi2;
+					player1modelo.Angbd1  = KeyFrame3p1[0].Angbd1;
+					player1modelo.Angbd2  = KeyFrame3p1[0].Angbd2;
+					player1modelo.Angpizq = KeyFrame3p1[0].Angpizq;
+					player1modelo.Angpder = KeyFrame3p1[0].Angpder;
+					player1modelo.Angpi   = KeyFrame3p1[0].Angpi;
+					player1modelo.Angpd   = KeyFrame3p1[0].Angpd;
+					player1modelo.Xtor    = KeyFrame3p1[0].Xtor;
+					player1modelo.Ytor    = KeyFrame3p1[0].Ytor;
+					player1modelo.Ztor    = KeyFrame3p1[0].Ztor;
+
+					varsAnimP1.play=true;
+					varsAnimP1.playIndex=0;
+					varsAnimP1.tipoAnim=3;
+				}
+			}
+		}
+	}
+	else
+		teclaLt=0;
+		
+	if(GetKeyState(VK_RIGHT) & 0x80) //Si está presionada la tecla RIGHT
+	{
+		if(!player1.golpeando)
+		{
+			teclaRt=1;
+			player1.caminando=true;
+			controlPersonaje(1);
+					
+			if(estadoHoverBoard < 2)
+			{
+				if(varsAnimP1.tipoAnim != 2 && varsAnimP1.play==false) //Para que la asignación de valores siguiente solo se haga una vez y empiece la animación
+				{
+					//Se le asignan a las variables del personaje los 
+					//valores almacenados en el primer keyframe para que
+					//inicie desde ahí la animación.
+					player1modelo.Angt1   = KeyFrame1p1[0].Angt1;
+					player1modelo.Angt2   = KeyFrame1p1[0].Angt2;
+					player1modelo.Angc1   = KeyFrame1p1[0].Angc1;
+					player1modelo.Angc2   = KeyFrame1p1[0].Angc2;
+					player1modelo.Angbi1  = KeyFrame1p1[0].Angbi1;
+					player1modelo.Angbi2  = KeyFrame1p1[0].Angbi2;
+					player1modelo.Angbd1  = KeyFrame1p1[0].Angbd1;
+					player1modelo.Angbd2  = KeyFrame1p1[0].Angbd2;
+					player1modelo.Angpizq = KeyFrame1p1[0].Angpizq;
+					player1modelo.Angpder = KeyFrame1p1[0].Angpder;
+					player1modelo.Angpi   = KeyFrame1p1[0].Angpi;
+					player1modelo.Angpd   = KeyFrame1p1[0].Angpd;
+					player1modelo.Xtor    = KeyFrame1p1[0].Xtor;
+					player1modelo.Ytor    = KeyFrame1p1[0].Ytor;
+					player1modelo.Ztor    = KeyFrame1p1[0].Ztor;
+
+					varsAnimP1.play=true;
+					varsAnimP1.playIndex=0;
+					varsAnimP1.tipoAnim=1;
+				}
+			}
+			else
+			{
+				if(varsAnimP1.play==false) //Para que la asignación de valores siguiente solo se haga una vez y empiece la animación
+				{
+					//Se le asignan a las variables del personaje los 
+					//valores almacenados en el primer keyframe para que
+					//inicie desde ahí la animación.
+					player1modelo.Angt1   = KeyFrame3p1[0].Angt1;
+					player1modelo.Angt2   = KeyFrame3p1[0].Angt2;
+					player1modelo.Angc1   = KeyFrame3p1[0].Angc1;
+					player1modelo.Angc2   = KeyFrame3p1[0].Angc2;
+					player1modelo.Angbi1  = KeyFrame3p1[0].Angbi1;
+					player1modelo.Angbi2  = KeyFrame3p1[0].Angbi2;
+					player1modelo.Angbd1  = KeyFrame3p1[0].Angbd1;
+					player1modelo.Angbd2  = KeyFrame3p1[0].Angbd2;
+					player1modelo.Angpizq = KeyFrame3p1[0].Angpizq;
+					player1modelo.Angpder = KeyFrame3p1[0].Angpder;
+					player1modelo.Angpi   = KeyFrame3p1[0].Angpi;
+					player1modelo.Angpd   = KeyFrame3p1[0].Angpd;
+					player1modelo.Xtor    = KeyFrame3p1[0].Xtor;
+					player1modelo.Ytor    = KeyFrame3p1[0].Ytor;
+					player1modelo.Ztor    = KeyFrame3p1[0].Ztor;
+
+					varsAnimP1.play=true;
+					varsAnimP1.playIndex=0;
+					varsAnimP1.tipoAnim=3;
+				}
+			}
+		}
+	}
+	else
+		teclaRt=0;
+
+	if((GetAsyncKeyState('A')&1) == 1)
+	{
+		player1.golpeando=true;
+
+		if(estadoHoverBoard < 2 && varsAnimP1.tipoAnim != 2) //Para que la asignación de valores siguiente solo se haga una vez y empiece la animación
+		{
+			//Se le asignan a las variables del personaje los 
+			//valores almacenados en el primer keyframe para que
+			//inicie desde ahí la animación.
+			player1modelo.Angt1   = KeyFrame2p1[0].Angt1;
+			player1modelo.Angt2   = KeyFrame2p1[0].Angt2;
+			player1modelo.Angc1   = KeyFrame2p1[0].Angc1;
+			player1modelo.Angc2   = KeyFrame2p1[0].Angc2;
+			player1modelo.Angbi1  = KeyFrame2p1[0].Angbi1;
+			player1modelo.Angbi2  = KeyFrame2p1[0].Angbi2;
+			player1modelo.Angbd1  = KeyFrame2p1[0].Angbd1;
+			player1modelo.Angbd2  = KeyFrame2p1[0].Angbd2;
+			player1modelo.Angpizq = KeyFrame2p1[0].Angpizq;
+			player1modelo.Angpder = KeyFrame2p1[0].Angpder;
+			player1modelo.Angpi   = KeyFrame2p1[0].Angpi;
+			player1modelo.Angpd   = KeyFrame2p1[0].Angpd;
+			player1modelo.Xtor    = KeyFrame2p1[0].Xtor;
+			player1modelo.Ytor    = KeyFrame2p1[0].Ytor;
+			player1modelo.Ztor    = KeyFrame2p1[0].Ztor;
+
+			varsAnimP1.play=true;
+			varsAnimP1.playIndex=0;
+			varsAnimP1.tipoAnim=2;
+		}
+	}
+	
+	//Para que al soltar la tecla presionada el personaje no quede en una posición
+	//intermedia de la animación se asignan los valores originales a las variables
+	if(!(GetKeyState(VK_UP) & 0x80 || GetKeyState(VK_DOWN) & 0x80
+	|| GetKeyState(VK_LEFT) & 0x80  || GetKeyState(VK_RIGHT) & 0x80)) //Si no está presionada alguna de esas teclas
+	{
+		player1.caminando=false;
+
+		if(varsAnimP1.tipoAnim == 1)
+		{
+			varsAnimP1.play=false;
+			player1modelo.Angt1   = 0.0f;
+			player1modelo.Angt2   = 0.0f;
+			player1modelo.Angc1   = 0.0f;
+			player1modelo.Angc2   = 0.0f;
+			player1modelo.Angbi1  = 0.0f;
+			player1modelo.Angbi2  = 0.0f;
+			player1modelo.Angbd1  = 0.0f;
+			player1modelo.Angbd2  = 0.0f;
+			player1modelo.Angpizq = 0.0f;
+			player1modelo.Angpder = 0.0f;
+			player1modelo.Angpi   = 0.0f;
+			player1modelo.Angpd   = 0.0f;
+			player1modelo.Xtor    = 0.0f;
+			player1modelo.Ytor    = 0.0f;
+			player1modelo.Ztor    = 0.0f;
+
+			varsAnimP1.tipoAnim=0;
+		}
+		else if(varsAnimP1.tipoAnim == 3)
+		{
+			varsAnimP1.play=false;
+			player1modelo.Angt1   = 5.0f;
+			player1modelo.Angt2   = 50.0f;
+			player1modelo.Angc1   = 0.0f;
+			player1modelo.Angc2   = -30.0f;
+			player1modelo.Angbi1  = 20.0f;
+			player1modelo.Angbi2  = 30.0f;
+			player1modelo.Angbd1  = -20.0f;
+			player1modelo.Angbd2  = -30.0f;
+			player1modelo.Angpizq = -5.0f;
+			player1modelo.Angpder = -5.0f;
+			player1modelo.Angpi   = 0.0f;
+			player1modelo.Angpd   = 0.0f;
+			player1modelo.Xtor    = 0.0f;
+			player1modelo.Ytor    = 0.0f;
+			player1modelo.Ztor    = 0.0f;
+
+			varsAnimP1.tipoAnim=0;
+		}
+	}
+	
+	return TRUE;
+}
